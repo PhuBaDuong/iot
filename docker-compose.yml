@@ -1,0 +1,44 @@
+version: '3.8'
+
+# =============================================================================
+# IoT Smart Home Monitor - Docker Compose
+# =============================================================================
+# This file sets up the infrastructure needed for our microservices:
+# - RabbitMQ: Message broker for async communication between services
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # RabbitMQ - Message Broker
+  # ---------------------------------------------------------------------------
+  # RabbitMQ is our message queue that enables:
+  # 1. Decoupled communication between microservices
+  # 2. Reliable message delivery with acknowledgments
+  # 3. Message persistence (survives restarts)
+  # 4. Flexible routing with exchanges and queues
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: smarthome-rabbitmq
+    ports:
+      # AMQP protocol port - used by our Spring Boot services
+      - "5672:5672"
+      # Management UI - access at http://localhost:15672
+      # Default credentials: guest/guest
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: smarthome
+      RABBITMQ_DEFAULT_PASS: smarthome123
+    volumes:
+      # Persist messages across container restarts
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+volumes:
+  rabbitmq_data:
+    driver: local
+

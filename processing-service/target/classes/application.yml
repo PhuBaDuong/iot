@@ -1,0 +1,54 @@
+# Processing Service Configuration
+# This service consumes processed sensor data and alerts from RabbitMQ,
+# performs real-time analytics, and handles alert notifications.
+
+server:
+  port: 8083
+
+spring:
+  application:
+    name: processing-service
+
+  # RabbitMQ Configuration
+  # The processing service acts as a consumer for multiple queues
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: smarthome
+    password: smarthome123
+    # Listener configuration for consumers
+    listener:
+      simple:
+        # Number of concurrent consumers per listener
+        # Increase for higher throughput
+        concurrency: 1
+        # Maximum concurrent consumers (auto-scales based on load)
+        max-concurrency: 5
+        # Acknowledge mode: AUTO means Spring handles ack/nack
+        acknowledge-mode: auto
+        # Prefetch count: number of unacked messages per consumer
+        # Lower values = better load distribution, higher values = better throughput
+        prefetch: 10
+        # Retry configuration for failed message processing
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2.0
+
+# Logging configuration
+logging:
+  level:
+    com.smarthome.processing: DEBUG
+    org.springframework.amqp: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# Analytics configuration
+analytics:
+  # Maximum number of recent readings to keep per sensor
+  max-recent-readings: 100
+  # Maximum number of recent alerts to store
+  max-recent-alerts: 1000
+

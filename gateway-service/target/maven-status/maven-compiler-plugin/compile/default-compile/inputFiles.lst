@@ -1,0 +1,7 @@
+/Users/techd/workspace/iot/gateway-service/src/main/java/com/smarthome/gateway/GatewayServiceApplication.java
+/Users/techd/workspace/iot/gateway-service/src/main/java/com/smarthome/gateway/config/RabbitMQConfig.java
+/Users/techd/workspace/iot/gateway-service/src/main/java/com/smarthome/gateway/config/ThresholdConfig.java
+/Users/techd/workspace/iot/gateway-service/src/main/java/com/smarthome/gateway/controller/GatewayController.java
+/Users/techd/workspace/iot/gateway-service/src/main/java/com/smarthome/gateway/listener/SensorDataListener.java
+/Users/techd/workspace/iot/gateway-service/src/main/java/com/smarthome/gateway/service/AnomalyDetectionService.java
+/Users/techd/workspace/iot/gateway-service/src/main/java/com/smarthome/gateway/service/ValidationService.java

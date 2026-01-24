@@ -1,0 +1,10 @@
+com/smarthome/processing/controller/AnalyticsController.class
+com/smarthome/processing/listener/ProcessedDataListener.class
+com/smarthome/processing/model/SensorStatistics$SensorStatisticsBuilder.class
+com/smarthome/processing/service/AlertHandlerService$1.class
+com/smarthome/processing/service/AnalyticsService.class
+com/smarthome/processing/ProcessingServiceApplication.class
+com/smarthome/processing/model/SensorStatistics.class
+com/smarthome/processing/service/AlertHandlerService.class
+com/smarthome/processing/listener/AlertListener.class
+com/smarthome/processing/config/RabbitMQConfig.class

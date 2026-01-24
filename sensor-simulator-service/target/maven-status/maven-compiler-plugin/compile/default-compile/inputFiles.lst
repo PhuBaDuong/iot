@@ -1,0 +1,5 @@
+/Users/techd/workspace/iot/sensor-simulator-service/src/main/java/com/smarthome/sensor/SensorSimulatorApplication.java
+/Users/techd/workspace/iot/sensor-simulator-service/src/main/java/com/smarthome/sensor/config/RabbitMQConfig.java
+/Users/techd/workspace/iot/sensor-simulator-service/src/main/java/com/smarthome/sensor/config/SensorConfig.java
+/Users/techd/workspace/iot/sensor-simulator-service/src/main/java/com/smarthome/sensor/controller/SimulatorController.java
+/Users/techd/workspace/iot/sensor-simulator-service/src/main/java/com/smarthome/sensor/service/SensorSimulatorService.java

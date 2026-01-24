@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- 
+    =============================================================================
+    LEARNING NOTE: Parent POM Inheritance
+    =============================================================================
+    By inheriting from iot-parent, we get:
+    1. Consistent dependency versions across all microservices
+    2. Common build configurations
+    3. Shared properties (Java version, encoding, etc.)
+    =============================================================================
+    -->
+    <parent>
+        <groupId>com.smarthome</groupId>
+        <artifactId>iot-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>sensor-simulator-service</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Sensor Simulator Service</name>
+    <description>Simulates IoT sensors and publishes readings to RabbitMQ</description>
+
+    <dependencies>
+        <!-- 
+        =============================================================================
+        Spring Boot AMQP - RabbitMQ Integration
+        =============================================================================
+        Provides:
+        - RabbitTemplate for sending messages
+        - @RabbitListener for receiving messages
+        - Auto-configuration for RabbitMQ connection
+        =============================================================================
+        -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- Spring Web for REST endpoints -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- 
+        IoT Common Library - Shared DTOs and Constants
+        Contains SensorReading, SensorType, and RabbitMQConstants
+        -->
+        <dependency>
+            <groupId>com.smarthome</groupId>
+            <artifactId>iot-common</artifactId>
+        </dependency>
+
+        <!-- Configuration processor for @ConfigurationProperties -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 
+            Spring Boot Maven Plugin
+            Packages the application as an executable JAR with embedded Tomcat
+            -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+

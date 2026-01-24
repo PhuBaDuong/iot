@@ -1,0 +1,5 @@
+/Users/techd/workspace/iot/iot-common/src/main/java/com/smarthome/common/constants/RabbitMQConstants.java
+/Users/techd/workspace/iot/iot-common/src/main/java/com/smarthome/common/dto/SensorReading.java
+/Users/techd/workspace/iot/iot-common/src/main/java/com/smarthome/common/dto/SensorType.java
+/Users/techd/workspace/iot/iot-common/src/main/java/com/smarthome/common/event/AlertEvent.java
+/Users/techd/workspace/iot/iot-common/src/main/java/com/smarthome/common/event/SensorDataEvent.java

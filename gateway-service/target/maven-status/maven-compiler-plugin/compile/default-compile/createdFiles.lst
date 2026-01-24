@@ -1,0 +1,12 @@
+com/smarthome/gateway/listener/SensorDataListener$1.class
+com/smarthome/gateway/config/RabbitMQConfig.class
+com/smarthome/gateway/service/AnomalyDetectionService$AnomalyDetails.class
+com/smarthome/gateway/service/AnomalyDetectionService.class
+com/smarthome/gateway/service/ValidationService.class
+com/smarthome/gateway/controller/GatewayController.class
+com/smarthome/gateway/config/ThresholdConfig.class
+com/smarthome/gateway/config/ThresholdConfig$ThresholdRange.class
+com/smarthome/gateway/service/AnomalyDetectionService$Severity.class
+com/smarthome/gateway/GatewayServiceApplication.class
+com/smarthome/gateway/listener/SensorDataListener.class
+com/smarthome/gateway/service/ValidationService$ValidationResult.class

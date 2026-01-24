@@ -1,0 +1,82 @@
+# =============================================================================
+# Gateway Service Configuration
+# =============================================================================
+# This service is the entry point for all sensor data. It:
+# 1. Consumes raw sensor readings from RabbitMQ
+# 2. Validates the data format and values
+# 3. Detects anomalies based on configured thresholds
+# 4. Routes data to appropriate downstream queues
+# =============================================================================
+
+server:
+  port: 8082
+
+spring:
+  application:
+    name: gateway-service
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ Configuration
+  # ---------------------------------------------------------------------------
+  # LEARNING NOTE: RabbitMQ Connection
+  # ----------------------------------
+  # Spring AMQP uses these settings to connect to RabbitMQ.
+  # In production, use environment variables or a secrets manager:
+  #   SPRING_RABBITMQ_HOST, SPRING_RABBITMQ_USERNAME, etc.
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: smarthome
+    password: smarthome123
+    # Virtual host (default is "/")
+    virtual-host: /
+    # Connection timeout
+    connection-timeout: 10s
+    # Template settings for publishing messages
+    template:
+      retry:
+        enabled: true
+        initial-interval: 1s
+        max-attempts: 3
+        multiplier: 2.0
+
+# =============================================================================
+# Anomaly Detection Thresholds
+# =============================================================================
+# LEARNING NOTE: Externalized Configuration
+# -----------------------------------------
+# Using @ConfigurationProperties, these values can be:
+# 1. Overridden via environment variables (GATEWAY_THRESHOLDS_TEMPERATURE_MIN)
+# 2. Changed without code modification
+# 3. Different per environment (dev, staging, prod)
+#
+# These thresholds define "normal" operating ranges for sensors.
+# Readings outside these ranges trigger anomaly alerts.
+# =============================================================================
+gateway:
+  thresholds:
+    temperature:
+      min: 15.0
+      max: 30.0
+    humidity:
+      min: 30.0
+      max: 70.0
+    light:
+      min: 0.0
+      max: 10000.0
+    pressure:
+      min: 950.0
+      max: 1050.0
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+logging:
+  level:
+    root: INFO
+    com.smarthome.gateway: DEBUG
+    org.springframework.amqp: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
