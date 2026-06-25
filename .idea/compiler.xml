@@ -6,17 +6,25 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="iam-service" />
         <module name="iot-common" />
         <module name="processing-service" />
         <module name="gateway-service" />
         <module name="sensor-simulator-service" />
+        <module name="history-service" />
+        <module name="device-registry-service" />
+        <module name="notification-service" />
       </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="device-registry-service" options="-parameters" />
       <module name="gateway-service" options="-parameters" />
+      <module name="history-service" options="-parameters" />
+      <module name="iam-service" options="-parameters" />
       <module name="iot-common" options="-parameters" />
+      <module name="notification-service" options="-parameters" />
       <module name="processing-service" options="-parameters" />
       <module name="sensor-simulator-service" options="-parameters" />
     </option>

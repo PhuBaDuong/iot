@@ -55,6 +55,17 @@ spring:
       port: ${REDIS_PORT:6379}
       timeout: 2s
 
+  # ---------------------------------------------------------------------------
+  # Security: OAuth2 resource server (Phase 3B). Validates IAM-issued RS256 JWTs
+  # locally via JWKS (lazy fetch on first token, so no startup coupling to IAM).
+  # ---------------------------------------------------------------------------
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${IAM_ISSUER:http://localhost:9000}
+          jwk-set-uri: ${IAM_ISSUER:http://localhost:9000}/oauth2/jwks
+
 # =============================================================================
 # Management / Observability (Actuator + Prometheus + Tracing)
 # =============================================================================

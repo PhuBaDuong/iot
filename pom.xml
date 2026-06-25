@@ -27,6 +27,7 @@
         <module>device-registry-service</module>
         <module>history-service</module>
         <module>iam-service</module>
+        <module>notification-service</module>
     </modules>
 
     <properties>

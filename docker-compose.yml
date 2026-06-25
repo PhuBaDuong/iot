@@ -207,6 +207,7 @@ services:
       DB_USERNAME: smarthome
       DB_PASSWORD: smarthome123
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      IAM_ISSUER: http://iam-service:9000
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -216,6 +217,8 @@ services:
         condition: service_healthy
       zipkin:
         condition: service_started
+      iam-service:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
       interval: 15s
@@ -244,6 +247,7 @@ services:
       DB_USERNAME: smarthome
       DB_PASSWORD: smarthome123
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      IAM_ISSUER: http://iam-service:9000
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -251,8 +255,48 @@ services:
         condition: service_healthy
       zipkin:
         condition: service_started
+      iam-service:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Notification Service - alert notifications, preferences, dedup
+  # ---------------------------------------------------------------------------
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification-service/Dockerfile
+    container_name: smarthome-notification
+    ports:
+      - "8086:8086"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: smarthome
+      RABBITMQ_PASSWORD: smarthome123
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_NAME: notifications
+      DB_USERNAME: smarthome
+      DB_PASSWORD: smarthome123
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+      IAM_ISSUER: http://iam-service:9000
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+      iam-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
       interval: 15s
       timeout: 5s
       retries: 5

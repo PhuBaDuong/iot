@@ -8,6 +8,10 @@
 --
 -- Phase 3A adds a third database, "smarthome_iam", for the IAM service
 -- (users, roles, user_roles).
+--
+-- Phase 4 adds a "notifications" database for the Notification Service
+-- (notification preferences, history, dedup).
 -- =============================================================================
 CREATE DATABASE devices;
 CREATE DATABASE smarthome_iam;
+CREATE DATABASE notifications;

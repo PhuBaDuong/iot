@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.smarthome.gateway.service.DeduplicationServiceTest
 -------------------------------------------------------------------------------
-Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.611 s -- in com.smarthome.gateway.service.DeduplicationServiceTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.696 s -- in com.smarthome.gateway.service.DeduplicationServiceTest

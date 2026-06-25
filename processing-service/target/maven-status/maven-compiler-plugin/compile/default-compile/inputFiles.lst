@@ -1,9 +1,7 @@
 D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\config\RabbitMQConfig.java
 D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\config\SecurityConfig.java
 D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\controller\AnalyticsController.java
-D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\listener\AlertListener.java
 D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\listener\ProcessedDataListener.java
 D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\model\SensorStatistics.java
 D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\ProcessingServiceApplication.java
-D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\service\AlertHandlerService.java
 D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\service\AnalyticsService.java

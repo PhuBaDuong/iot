@@ -1,10 +1,11 @@
-com\smarthome\registry\config\RabbitMQConfig.class
+com\smarthome\registry\config\SecurityConfig.class
 com\smarthome\registry\controller\RestExceptionHandler.class
 com\smarthome\registry\controller\DeviceController.class
 com\smarthome\registry\repository\DeviceRepository.class
 com\smarthome\registry\exception\DeviceNotFoundException.class
+com\smarthome\registry\listener\HeartbeatListener.class
+com\smarthome\registry\entity\DeviceEntity.class
+com\smarthome\registry\config\RabbitMQConfig.class
 com\smarthome\registry\service\DeviceService.class
 com\smarthome\registry\service\HeartbeatMonitor.class
-com\smarthome\registry\listener\HeartbeatListener.class
 com\smarthome\registry\DeviceRegistryServiceApplication.class
-com\smarthome\registry\entity\DeviceEntity.class

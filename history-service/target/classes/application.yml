@@ -50,6 +50,17 @@ spring:
           max-interval: 10s
           multiplier: 2.0
 
+  # ---------------------------------------------------------------------------
+  # Security: OAuth2 resource server (Phase 3B). Validates IAM-issued RS256 JWTs
+  # locally via JWKS (lazy fetch on first token, so no startup coupling to IAM).
+  # ---------------------------------------------------------------------------
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${IAM_ISSUER:http://localhost:9000}
+          jwk-set-uri: ${IAM_ISSUER:http://localhost:9000}/oauth2/jwks
+
 # =============================================================================
 # Management / Observability (Actuator + Prometheus + Tracing)
 # =============================================================================

@@ -1,4 +1,5 @@
 D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\config\RabbitMQConfig.java
+D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\config\SecurityConfig.java
 D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\controller\HistoryController.java
 D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\dto\ReadingPointDto.java
 D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\entity\SensorReadingEntity.java

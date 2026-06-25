@@ -1,1 +1,2 @@
 com\smarthome\registry\DeviceRegistryIntegrationTest.class
+com\smarthome\registry\security\RegistrySecurityTest.class

@@ -67,26 +67,6 @@ public class RabbitMQConfig {
                 .build();
     }
 
-    /**
-     * Queue for alert events.
-     * Alerts are generated when sensor readings exceed thresholds
-     * or when anomalies are detected.
-     * 
-     * In production, consider:
-     * - Priority queues for different alert severities
-     * - Separate queues for different alert types (critical, warning, info)
-     * - Dead letter queues for failed alert processing
-     */
-    @Bean
-    public Queue alertsQueue() {
-        return QueueBuilder
-                .durable(RabbitMQConstants.ALERTS_QUEUE)
-                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_EXCHANGE, RabbitMQConstants.DLX_EXCHANGE)
-                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_ROUTING_KEY,
-                        RabbitMQConstants.DLX_ALERTS_ROUTING_KEY)
-                .build();
-    }
-
     // =========================================================================
     // DEAD LETTER TOPOLOGY (declared identically in every service)
     // =========================================================================
@@ -102,20 +82,9 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public Queue alertsDlq() {
-        return QueueBuilder.durable(RabbitMQConstants.ALERTS_DLQ).build();
-    }
-
-    @Bean
     public Binding processedDataDlqBinding(Queue processedDataDlq, DirectExchange deadLetterExchange) {
         return BindingBuilder.bind(processedDataDlq).to(deadLetterExchange)
                 .with(RabbitMQConstants.DLX_PROCESSED_DATA_ROUTING_KEY);
-    }
-
-    @Bean
-    public Binding alertsDlqBinding(Queue alertsDlq, DirectExchange deadLetterExchange) {
-        return BindingBuilder.bind(alertsDlq).to(deadLetterExchange)
-                .with(RabbitMQConstants.DLX_ALERTS_ROUTING_KEY);
     }
 
     /**

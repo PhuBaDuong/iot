@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.smarthome.gateway.security.GatewaySecurityTest
 -------------------------------------------------------------------------------
-Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.872 s -- in com.smarthome.gateway.security.GatewaySecurityTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.481 s -- in com.smarthome.gateway.security.GatewaySecurityTest
