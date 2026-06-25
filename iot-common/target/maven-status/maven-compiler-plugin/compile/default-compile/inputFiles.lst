@@ -1,5 +1,10 @@
-/Users/techd/workspace/iot/iot-common/src/main/java/com/smarthome/common/constants/RabbitMQConstants.java
-/Users/techd/workspace/iot/iot-common/src/main/java/com/smarthome/common/dto/SensorReading.java
-/Users/techd/workspace/iot/iot-common/src/main/java/com/smarthome/common/dto/SensorType.java
-/Users/techd/workspace/iot/iot-common/src/main/java/com/smarthome/common/event/AlertEvent.java
-/Users/techd/workspace/iot/iot-common/src/main/java/com/smarthome/common/event/SensorDataEvent.java
+D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\constants\RabbitMQConstants.java
+D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\constants\RedisConstants.java
+D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\dto\DeviceDto.java
+D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\dto\DeviceRegistrationRequest.java
+D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\dto\DeviceStatus.java
+D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\dto\SensorReading.java
+D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\dto\SensorType.java
+D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\event\AlertEvent.java
+D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\event\HeartbeatEvent.java
+D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\event\SensorDataEvent.java

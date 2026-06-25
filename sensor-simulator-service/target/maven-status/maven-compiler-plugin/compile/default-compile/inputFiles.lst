@@ -1,5 +1,8 @@
-/Users/techd/workspace/iot/sensor-simulator-service/src/main/java/com/smarthome/sensor/SensorSimulatorApplication.java
-/Users/techd/workspace/iot/sensor-simulator-service/src/main/java/com/smarthome/sensor/config/RabbitMQConfig.java
-/Users/techd/workspace/iot/sensor-simulator-service/src/main/java/com/smarthome/sensor/config/SensorConfig.java
-/Users/techd/workspace/iot/sensor-simulator-service/src/main/java/com/smarthome/sensor/controller/SimulatorController.java
-/Users/techd/workspace/iot/sensor-simulator-service/src/main/java/com/smarthome/sensor/service/SensorSimulatorService.java
+D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\config\RabbitMQConfig.java
+D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\config\RestClientConfig.java
+D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\config\SensorConfig.java
+D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\controller\SimulatorController.java
+D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\SensorSimulatorApplication.java
+D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\service\DeviceRegistrationService.java
+D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\service\HeartbeatPublisher.java
+D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\service\SensorSimulatorService.java

@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  =============================================================================
+  Structured JSON logging (Phase 1.9, applied to the Phase 2 services too)
+  =============================================================================
+  One JSON object per log line via logstash-logback-encoder, carrying the
+  service name plus traceId/spanId (Micrometer tracing) and any correlationId.
+  =============================================================================
+-->
+<configuration>
+
+    <springProperty scope="context" name="appName"
+                    source="spring.application.name" defaultValue="history-service"/>
+
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"service":"${appName}"}</customFields>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>spanId</includeMdcKeyName>
+            <includeMdcKeyName>correlationId</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="JSON"/>
+    </root>
+</configuration>

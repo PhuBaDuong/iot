@@ -1,8 +1,13 @@
 package com.smarthome.gateway.controller;
 
+import com.smarthome.gateway.config.ThresholdConfig.ThresholdRange;
 import com.smarthome.gateway.listener.SensorDataListener;
+import com.smarthome.gateway.service.ThresholdService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,9 +46,12 @@ import java.util.Map;
 public class GatewayController {
 
     private final SensorDataListener sensorDataListener;
+    private final ThresholdService thresholdService;
 
-    public GatewayController(SensorDataListener sensorDataListener) {
+    public GatewayController(SensorDataListener sensorDataListener,
+                             ThresholdService thresholdService) {
         this.sensorDataListener = sensorDataListener;
+        this.thresholdService = thresholdService;
     }
 
     /**
@@ -108,5 +116,35 @@ public class GatewayController {
                 "timestamp", Instant.now().toString()
         ));
     }
+
+    /**
+     * Update the anomaly-detection threshold for a sensor type at runtime.
+     *
+     * The override is persisted to Redis and takes effect immediately for
+     * subsequent readings, without a redeploy. Falls back to the YAML-bound
+     * defaults if no override exists.
+     *
+     * @param sensorType the sensor type (e.g. "TEMPERATURE")
+     * @param request    the new min/max range
+     * @return the stored threshold range
+     */
+    @PutMapping("/thresholds/{sensorType}")
+    public ResponseEntity<Map<String, Object>> updateThreshold(
+            @PathVariable String sensorType,
+            @RequestBody ThresholdUpdateRequest request) {
+        ThresholdRange stored = thresholdService.updateThreshold(
+                sensorType, request.min(), request.max());
+        return ResponseEntity.ok(Map.of(
+                "sensorType", sensorType.toUpperCase(),
+                "min", stored.getMin(),
+                "max", stored.getMax(),
+                "timestamp", Instant.now().toString()
+        ));
+    }
+
+    /**
+     * Request body for {@link #updateThreshold}.
+     */
+    public record ThresholdUpdateRequest(double min, double max) {}
 }
 

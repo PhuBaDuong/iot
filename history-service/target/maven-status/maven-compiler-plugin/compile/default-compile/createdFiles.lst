@@ -1,0 +1,8 @@
+com\smarthome\history\repository\SensorReadingRepository.class
+com\smarthome\history\service\PersistenceService.class
+com\smarthome\history\config\RabbitMQConfig.class
+com\smarthome\history\listener\TelemetryPersistenceListener.class
+com\smarthome\history\entity\SensorReadingEntity.class
+com\smarthome\history\controller\HistoryController.class
+com\smarthome\history\dto\ReadingPointDto.class
+com\smarthome\history\HistoryServiceApplication.class

@@ -3,8 +3,11 @@ package com.smarthome.processing.listener;
 import com.smarthome.common.constants.RabbitMQConstants;
 import com.smarthome.common.event.AlertEvent;
 import com.smarthome.processing.service.AlertHandlerService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
@@ -54,9 +57,12 @@ public class AlertListener {
     private static final Logger log = LoggerFactory.getLogger(AlertListener.class);
 
     private final AlertHandlerService alertHandlerService;
+    private final Counter alertsHandled;
 
-    public AlertListener(AlertHandlerService alertHandlerService) {
+    public AlertListener(AlertHandlerService alertHandlerService, MeterRegistry meterRegistry) {
         this.alertHandlerService = alertHandlerService;
+        this.alertsHandled = Counter.builder("processing.alerts.handled")
+                .description("Total alerts handled").register(meterRegistry);
     }
 
     /**
@@ -79,6 +85,8 @@ public class AlertListener {
     public void handleAlert(AlertEvent alertEvent) {
         String sensorId = alertEvent.getTriggeringReading() != null
                 ? alertEvent.getTriggeringReading().getSensorId() : "unknown";
+        // Propagate the upstream correlationId into the MDC for structured logs.
+        MDC.put("correlationId", alertEvent.getCorrelationId());
 
         log.info("Received alert: alertId={}, sensorId={}, severity={}",
                 alertEvent.getAlertId(),
@@ -88,6 +96,7 @@ public class AlertListener {
         try {
             // Delegate to alert handler service
             alertHandlerService.handleAlert(alertEvent);
+            alertsHandled.increment();
 
             log.debug("Alert processed successfully: {}", alertEvent.getAlertId());
 
@@ -106,6 +115,8 @@ public class AlertListener {
 
             // Re-throw to trigger retry
             throw e;
+        } finally {
+            MDC.remove("correlationId");
         }
     }
 }

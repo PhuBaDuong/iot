@@ -1,10 +1,10 @@
-version: '3.8'
-
 # =============================================================================
 # IoT Smart Home Monitor - Docker Compose
 # =============================================================================
-# This file sets up the infrastructure needed for our microservices:
-# - RabbitMQ: Message broker for async communication between services
+# Full Phase 1 stack:
+# - RabbitMQ: message broker        - Redis: dedup / rate-limit / thresholds
+# - Zipkin: distributed tracing     - Prometheus + Grafana: metrics dashboards
+# - gateway / processing / simulator: the three application services
 # =============================================================================
 
 services:
@@ -38,7 +38,262 @@ services:
       timeout: 10s
       retries: 5
 
+  # ---------------------------------------------------------------------------
+  # Redis - deduplication, rate limiting, and dynamic thresholds (gateway)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: smarthome-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # TimescaleDB - time-series telemetry (history-service) + relational device
+  # metadata (device-registry). One instance hosts two databases: "telemetry"
+  # (the sensor_readings hypertable) and "devices" (created by the init script).
+  # ---------------------------------------------------------------------------
+  timescaledb:
+    image: timescale/timescaledb:2.17.2-pg16
+    container_name: smarthome-timescaledb
+    environment:
+      POSTGRES_USER: smarthome
+      POSTGRES_PASSWORD: smarthome123
+      POSTGRES_DB: telemetry
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./db/timescaledb/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smarthome -d telemetry"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Zipkin - distributed tracing collector (receives spans via Micrometer/OTel)
+  # ---------------------------------------------------------------------------
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: smarthome-zipkin
+    ports:
+      - "9411:9411"
+
+  # ---------------------------------------------------------------------------
+  # Prometheus - scrapes /actuator/prometheus from each service
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: smarthome-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+
+  # ---------------------------------------------------------------------------
+  # Grafana - dashboards (Prometheus datasource auto-provisioned)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: smarthome-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+
+  # ---------------------------------------------------------------------------
+  # Gateway Service - validates, dedupes, rate-limits, detects anomalies
+  # ---------------------------------------------------------------------------
+  gateway-service:
+    build:
+      context: .
+      dockerfile: gateway-service/Dockerfile
+    container_name: smarthome-gateway
+    ports:
+      - "8082:8082"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: smarthome
+      RABBITMQ_PASSWORD: smarthome123
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DEVICE_REGISTRY_URL: http://device-registry-service:8084
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      device-registry-service:
+        condition: service_started
+      zipkin:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Processing Service - analytics + alert handling
+  # ---------------------------------------------------------------------------
+  processing-service:
+    build:
+      context: .
+      dockerfile: processing-service/Dockerfile
+    container_name: smarthome-processing
+    ports:
+      - "8083:8083"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: smarthome
+      RABBITMQ_PASSWORD: smarthome123
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Device Registry Service - device metadata + lifecycle, heartbeat consumer
+  # ---------------------------------------------------------------------------
+  device-registry-service:
+    build:
+      context: .
+      dockerfile: device-registry-service/Dockerfile
+    container_name: smarthome-device-registry
+    ports:
+      - "8084:8084"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: smarthome
+      RABBITMQ_PASSWORD: smarthome123
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_NAME: devices
+      DB_USERNAME: smarthome
+      DB_PASSWORD: smarthome123
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # History / Persistence Service - durable telemetry in TimescaleDB
+  # ---------------------------------------------------------------------------
+  history-service:
+    build:
+      context: .
+      dockerfile: history-service/Dockerfile
+    container_name: smarthome-history
+    ports:
+      - "8085:8085"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: smarthome
+      RABBITMQ_PASSWORD: smarthome123
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_NAME: telemetry
+      DB_USERNAME: smarthome
+      DB_PASSWORD: smarthome123
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Sensor Simulator Service - publishes synthetic sensor readings
+  # ---------------------------------------------------------------------------
+  sensor-simulator-service:
+    build:
+      context: .
+      dockerfile: sensor-simulator-service/Dockerfile
+    container_name: smarthome-simulator
+    ports:
+      - "8081:8081"
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: smarthome
+      RABBITMQ_PASSWORD: smarthome123
+      DEVICE_REGISTRY_URL: http://device-registry-service:8084
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      gateway-service:
+        condition: service_started
+      device-registry-service:
+        condition: service_started
+      zipkin:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
 volumes:
   rabbitmq_data:
+    driver: local
+  redis_data:
+    driver: local
+  timescaledb_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
     driver: local
 

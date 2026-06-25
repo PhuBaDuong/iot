@@ -1,8 +1,8 @@
-/Users/techd/workspace/iot/processing-service/src/main/java/com/smarthome/processing/ProcessingServiceApplication.java
-/Users/techd/workspace/iot/processing-service/src/main/java/com/smarthome/processing/config/RabbitMQConfig.java
-/Users/techd/workspace/iot/processing-service/src/main/java/com/smarthome/processing/controller/AnalyticsController.java
-/Users/techd/workspace/iot/processing-service/src/main/java/com/smarthome/processing/listener/AlertListener.java
-/Users/techd/workspace/iot/processing-service/src/main/java/com/smarthome/processing/listener/ProcessedDataListener.java
-/Users/techd/workspace/iot/processing-service/src/main/java/com/smarthome/processing/model/SensorStatistics.java
-/Users/techd/workspace/iot/processing-service/src/main/java/com/smarthome/processing/service/AlertHandlerService.java
-/Users/techd/workspace/iot/processing-service/src/main/java/com/smarthome/processing/service/AnalyticsService.java
+D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\config\RabbitMQConfig.java
+D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\controller\AnalyticsController.java
+D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\listener\AlertListener.java
+D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\listener\ProcessedDataListener.java
+D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\model\SensorStatistics.java
+D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\ProcessingServiceApplication.java
+D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\service\AlertHandlerService.java
+D:\workspaces\iot\processing-service\src\main\java\com\smarthome\processing\service\AnalyticsService.java

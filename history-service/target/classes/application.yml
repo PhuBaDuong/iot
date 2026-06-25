@@ -1,0 +1,83 @@
+# =============================================================================
+# History / Persistence Service Configuration (Phase 2)
+# =============================================================================
+# Consumes every processed.data event on its own queue and persists readings to
+# the TimescaleDB sensor_readings hypertable. Serves historical queries.
+# =============================================================================
+
+server:
+  port: 8085
+
+spring:
+  application:
+    name: history-service
+
+  # ---------------------------------------------------------------------------
+  # Time-series store: the "telemetry" database on the shared TimescaleDB.
+  # The hypertable is created by the DB init scripts, so ddl-auto stays "none".
+  # ---------------------------------------------------------------------------
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:telemetry}
+    username: ${DB_USERNAME:smarthome}
+    password: ${DB_PASSWORD:smarthome123}
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        format_sql: false
+    open-in-view: false
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ: processed-data consumer
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:smarthome}
+    password: ${RABBITMQ_PASSWORD:smarthome123}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    listener:
+      simple:
+        concurrency: 1
+        max-concurrency: 5
+        acknowledge-mode: auto
+        prefetch: 20
+        retry:
+          enabled: true
+          initial-interval: 1s
+          max-attempts: 3
+          max-interval: 10s
+          multiplier: 2.0
+
+# =============================================================================
+# Management / Observability (Actuator + Prometheus + Tracing)
+# =============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+logging:
+  level:
+    root: INFO
+    com.smarthome.history: DEBUG
+    org.springframework.amqp: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

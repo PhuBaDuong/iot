@@ -1,0 +1,8 @@
+D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\config\RabbitMQConfig.java
+D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\controller\HistoryController.java
+D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\dto\ReadingPointDto.java
+D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\entity\SensorReadingEntity.java
+D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\HistoryServiceApplication.java
+D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\listener\TelemetryPersistenceListener.java
+D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\repository\SensorReadingRepository.java
+D:\workspaces\iot\history-service\src\main\java\com\smarthome\history\service\PersistenceService.java

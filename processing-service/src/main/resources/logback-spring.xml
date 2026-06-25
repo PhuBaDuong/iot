@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  =============================================================================
+  Structured JSON logging (Phase 1.9)
+  =============================================================================
+  Emits one JSON object per log line via logstash-logback-encoder so logs can be
+  shipped to Loki/Elasticsearch and correlated with metrics and traces.
+
+  Each line carries:
+    - service:       the emitting service (Spring application name)
+    - traceId/spanId: injected into the MDC by Micrometer tracing (OTel bridge)
+    - correlationId:  our application-level id (set in the MDC by the listeners)
+
+  Log levels are still controlled by logging.level.* in application.yml; Spring
+  Boot applies them on top of this configuration.
+  =============================================================================
+-->
+<configuration>
+
+    <springProperty scope="context" name="appName"
+                    source="spring.application.name" defaultValue="processing-service"/>
+
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"service":"${appName}"}</customFields>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>spanId</includeMdcKeyName>
+            <includeMdcKeyName>correlationId</includeMdcKeyName>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="JSON"/>
+    </root>
+</configuration>

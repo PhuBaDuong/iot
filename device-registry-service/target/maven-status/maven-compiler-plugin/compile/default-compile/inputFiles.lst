@@ -1,0 +1,10 @@
+D:\workspaces\iot\device-registry-service\src\main\java\com\smarthome\registry\config\RabbitMQConfig.java
+D:\workspaces\iot\device-registry-service\src\main\java\com\smarthome\registry\controller\DeviceController.java
+D:\workspaces\iot\device-registry-service\src\main\java\com\smarthome\registry\controller\RestExceptionHandler.java
+D:\workspaces\iot\device-registry-service\src\main\java\com\smarthome\registry\DeviceRegistryServiceApplication.java
+D:\workspaces\iot\device-registry-service\src\main\java\com\smarthome\registry\entity\DeviceEntity.java
+D:\workspaces\iot\device-registry-service\src\main\java\com\smarthome\registry\exception\DeviceNotFoundException.java
+D:\workspaces\iot\device-registry-service\src\main\java\com\smarthome\registry\listener\HeartbeatListener.java
+D:\workspaces\iot\device-registry-service\src\main\java\com\smarthome\registry\repository\DeviceRepository.java
+D:\workspaces\iot\device-registry-service\src\main\java\com\smarthome\registry\service\DeviceService.java
+D:\workspaces\iot\device-registry-service\src\main\java\com\smarthome\registry\service\HeartbeatMonitor.java

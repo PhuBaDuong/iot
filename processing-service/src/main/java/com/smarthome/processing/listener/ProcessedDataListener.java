@@ -3,8 +3,11 @@ package com.smarthome.processing.listener;
 import com.smarthome.common.constants.RabbitMQConstants;
 import com.smarthome.common.event.SensorDataEvent;
 import com.smarthome.processing.service.AnalyticsService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
@@ -53,9 +56,12 @@ public class ProcessedDataListener {
     private static final Logger log = LoggerFactory.getLogger(ProcessedDataListener.class);
 
     private final AnalyticsService analyticsService;
+    private final Counter eventsProcessed;
 
-    public ProcessedDataListener(AnalyticsService analyticsService) {
+    public ProcessedDataListener(AnalyticsService analyticsService, MeterRegistry meterRegistry) {
         this.analyticsService = analyticsService;
+        this.eventsProcessed = Counter.builder("processing.events.processed")
+                .description("Total processed-data events consumed").register(meterRegistry);
     }
 
     /**
@@ -72,6 +78,8 @@ public class ProcessedDataListener {
     public void handleProcessedData(SensorDataEvent event) {
         String sensorId = event.getReading() != null
                 ? event.getReading().getSensorId() : "unknown";
+        // Propagate the upstream correlationId into the MDC for structured logs.
+        MDC.put("correlationId", event.getCorrelationId());
 
         log.debug("Received processed data event: correlationId={}, sensorId={}, isAnomaly={}",
                 event.getCorrelationId(),
@@ -81,6 +89,7 @@ public class ProcessedDataListener {
         try {
             // Update analytics with the new reading
             analyticsService.updateWithEvent(event);
+            eventsProcessed.increment();
 
             log.debug("Successfully processed event: correlationId={}", event.getCorrelationId());
 
@@ -94,6 +103,8 @@ public class ProcessedDataListener {
 
             // Re-throw to trigger retry mechanism
             throw e;
+        } finally {
+            MDC.remove("correlationId");
         }
     }
 }

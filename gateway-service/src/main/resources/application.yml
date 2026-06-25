@@ -25,36 +25,135 @@ spring:
   #   SPRING_RABBITMQ_HOST, SPRING_RABBITMQ_USERNAME, etc.
   # ---------------------------------------------------------------------------
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: smarthome
-    password: smarthome123
-    # Virtual host (default is "/")
-    virtual-host: /
-    # Connection timeout
+    # Credentials are externalized; defaults are for local development only.
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:smarthome}
+    password: ${RABBITMQ_PASSWORD:smarthome123}
+    virtual-host: ${RABBITMQ_VHOST:/}
     connection-timeout: 10s
-    # Template settings for publishing messages
+    # Publisher confirms/returns detect broker-side delivery failures.
+    publisher-confirm-type: correlated
+    publisher-returns: true
     template:
+      mandatory: true
       retry:
         enabled: true
         initial-interval: 1s
         max-attempts: 3
         multiplier: 2.0
+    # Listener retry: after max-attempts the RejectAndDontRequeueRecoverer
+    # routes the message to the dead-letter exchange.
+    listener:
+      simple:
+        acknowledge-mode: auto
+        retry:
+          enabled: true
+          initial-interval: 1s
+          max-attempts: 3
+          max-interval: 10s
+          multiplier: 2.0
+
+  # ---------------------------------------------------------------------------
+  # Redis: dedup, rate limiting, device-status cache, dynamic thresholds
+  # ---------------------------------------------------------------------------
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+
+  # Placeholder for centralized secrets management (enabled in Phase 4):
+  #   config:
+  #     import: optional:vault://
+
+# ---------------------------------------------------------------------------
+# Device Registry (Phase 2): base URL used to validate the source device of
+# each reading. Overridden in containers via DEVICE_REGISTRY_URL.
+# ---------------------------------------------------------------------------
+device-registry:
+  base-url: ${DEVICE_REGISTRY_URL:http://localhost:8084}
 
 # =============================================================================
-# Anomaly Detection Thresholds
+# Management / Observability (Actuator + Prometheus + Tracing)
+# =============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+  health:
+    circuitbreakers:
+      enabled: true
+
+# =============================================================================
+# Resilience4j: circuit breakers + retry for outbound calls (OutboundPublisher)
+# =============================================================================
+# The "rabbitPublisher" instance guards publishes to RabbitMQ; the same named
+# instances will be reused for the Device Registry REST calls added in Phase 2.
+resilience4j:
+  circuitbreaker:
+    instances:
+      rabbitPublisher:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        register-health-indicator: true
+      # Guards device-validation REST calls to the Device Registry. When the
+      # registry is unhealthy the breaker opens and lookups fail open (UNVERIFIED).
+      deviceRegistryBreaker:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 20
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 3
+        register-health-indicator: true
+  retry:
+    instances:
+      rabbitPublisher:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+      deviceRegistryBreaker:
+        max-attempts: 2
+        wait-duration: 200ms
+
+# =============================================================================
+# Gateway features: Redis (dedup, rate limiting), DLQ monitor, and thresholds
 # =============================================================================
 # LEARNING NOTE: Externalized Configuration
 # -----------------------------------------
-# Using @ConfigurationProperties, these values can be:
+# Using @ConfigurationProperties, the threshold values can be:
 # 1. Overridden via environment variables (GATEWAY_THRESHOLDS_TEMPERATURE_MIN)
 # 2. Changed without code modification
 # 3. Different per environment (dev, staging, prod)
 #
 # These thresholds define "normal" operating ranges for sensors.
-# Readings outside these ranges trigger anomaly alerts.
+# Readings outside these ranges trigger anomaly alerts. At runtime they can be
+# overridden in Redis via PUT /api/gateway/thresholds/{sensorType}.
 # =============================================================================
 gateway:
+  dedup:
+    ttl-seconds: 300
+  rate-limit:
+    max-per-minute: 120
+  dlq-monitor:
+    interval: 60000
   thresholds:
     temperature:
       min: 15.0

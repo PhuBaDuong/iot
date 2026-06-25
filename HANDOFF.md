@@ -1,110 +1,80 @@
-# Session Handoff — IoT Smart Home Monitor
+# Project Handoff — IoT Smart Home Monitor
 
-## Project Location
+Status snapshot for the production-readiness effort tracked in `production_plan.md`.
+**Phases 1 and 2 are complete and tested. Phases 3–4 are not started.**
 
-`/Users/techd/workspace/iot`
+- **Stack:** Spring Boot 4.0.1, Java 25, Spring Cloud 2025.1.2 (Oakwood), Maven multi-module reactor.
+- **Modules:** `iot-common`, `sensor-simulator-service` (8081), `gateway-service` (8082), `processing-service` (8083), `device-registry-service` (8084), `history-service` (8085).
+- **Datastores:** RabbitMQ, Redis, TimescaleDB (`telemetry` + `devices` databases).
+- **Build:** `./mvnw clean package` (full reactor, 7 modules) — green. `./mvnw clean test` — 14 gateway unit tests green; 3 Testcontainers integration tests run when Docker is available, otherwise skip cleanly.
+- **Run locally:** `docker compose up --build` brings up the full stack (RabbitMQ, Redis, TimescaleDB, Zipkin, Prometheus, Grafana + 5 app services).
 
-## What This Project Is
+---
 
-A Spring Boot 4.0.1 / Java 25 event-driven microservices platform for real-time IoT sensor monitoring. Uses RabbitMQ topic exchanges for async communication. Currently an educational prototype — no database, no auth, no real alerting.
+## ✅ Done — Phase 1: Foundation & Resilience
 
-## Current Codebase (unchanged — no code edits were made)
+All 12 sub-tasks complete:
 
-```
-iot/
-├── iot-common/                    Shared DTOs, events, constants (SensorReading, SensorDataEvent, AlertEvent, SensorType, RabbitMQConstants)
-├── sensor-simulator-service/      Port 8081 — generates 7 synthetic sensors on 2s schedule, publishes to sensor.exchange
-├── gateway-service/               Port 8082 — validates, detects anomalies (configurable thresholds), enriches, routes to processed.data.queue + alerts.queue
-├── processing-service/            Port 8083 — in-memory analytics (ConcurrentHashMap), alert handler (log-only), REST API for stats/alerts
-├── docker-compose.yml             RabbitMQ 3.12-management only
-├── pom.xml                        Maven multi-module parent
-├── production_plan.md             ✅ CREATED — comprehensive production roadmap (466 lines)
-├── ARCHITECTURE_WALKTHROUGH.md    Original project docs
-└── SERVICE_GUIDE.md               Original project docs
-```
+1. **Actuator + Prometheus metrics** — added to all 3 services; `/actuator/health` and `/actuator/prometheus` exposed; Micrometer counters replace ad-hoc `AtomicLong`s.
+2. **Dead Letter Queues** — `dlx.exchange` (direct) + `.dlq` queues; `x-dead-letter-exchange` args on main queues; `RejectAndDontRequeueRecoverer`; `DlqMonitorService`.
+3. **Publisher confirms** — `publisher-confirm-type: correlated` + `publisher-returns` on simulator + gateway; unroutable messages logged.
+4. **Resilience4j** — `spring-cloud-starter-circuitbreaker-resilience4j` on gateway; `OutboundPublisher` bean wraps RabbitMQ sends with `@CircuitBreaker`/`@Retry` (separate bean so Spring AOP proxies the calls).
+5. **Redis integration** — Redis in compose; `spring-boot-starter-data-redis` + `-cache` on gateway; `RedisConfig` (connection + `RedisCacheManager`, `deviceStatus` cache stub for Phase 2).
+6. **Deduplication** — `DeduplicationService` (Redis `SET NX` + TTL); first check in `SensorDataListener`; duplicates discarded silently; metric `gateway.readings.deduplicated`.
+7. **Per-device rate limiting** — `RateLimitingService` (Redis `INCR`/`EXPIRE` fixed-window, key `ratelimit:{sensorId}:{minute}`); over-limit → `AmqpRejectAndDontRequeueException` → DLQ; metric `gateway.readings.rate_limited`.
+8. **Dynamic thresholds** — `ThresholdService` reads Redis hash `config:thresholds:{sensorType}` with YAML fallback; admin endpoint `PUT /api/gateway/thresholds/{sensorType}`.
+9. **Structured JSON logging** — `logstash-logback-encoder`; `logback-spring.xml` per service; MDC carries `service`, `traceId`, `spanId`, `correlationId`.
+10. **Distributed tracing** — `micrometer-tracing-bridge-otel` + Zipkin exporter on all services; AMQP + REST auto-instrumented.
+11. **Externalized secrets** — RabbitMQ/Redis creds via env vars in `application.yml`; Vault import placeholder left commented.
+12. **Dockerize + observability stack** — multi-stage `Dockerfile` per service (Maven JDK 25 build → `eclipse-temurin:25-jre` runtime, non-root, healthcheck-ready); `.dockerignore`; `monitoring/prometheus.yml` + Grafana datasource provisioning; `docker-compose.yml` includes RabbitMQ, Redis, Zipkin, Prometheus, Grafana + the 3 app services with env wiring, health checks, and dependency ordering.
 
-### Existing REST API Endpoints
+### Tests added (most recent session)
+`gateway-service/src/test/java/com/smarthome/gateway/service/`
+- `DeduplicationServiceTest` (4), `RateLimitingServiceTest` (5), `ThresholdServiceTest` (5) — Mockito-mocked `StringRedisTemplate`, real `SimpleMeterRegistry`. **14 tests passing.** These are the only unit tests in the repo.
 
-| Service | Endpoint | Method | Purpose |
-|---------|----------|--------|---------|
-| simulator | `/api/simulator/status` | GET | Running status, interval, sensor list |
-| simulator | `/api/simulator/trigger` | POST | Manually trigger one reading cycle |
-| simulator | `/api/simulator/start` | POST | Start automatic simulation |
-| simulator | `/api/simulator/stop` | POST | Stop automatic simulation |
-| gateway | `/api/gateway/health` | GET | Health check with timestamp |
-| gateway | `/api/gateway/stats` | GET | Processing stats (received, processed, failures, anomalies, rates) |
-| processing | `/api/analytics/statistics` | GET | All sensor statistics (min/max/avg/count per sensor) |
-| processing | `/api/analytics/statistics/{sensorId}` | GET | Single sensor stats |
-| processing | `/api/analytics/alerts?limit=50` | GET | Recent AlertEvents |
-| processing | `/api/analytics/health` | GET | Health check with metrics |
-| processing | `/api/analytics/summary` | GET | Combined stats + alerts + counts |
+---
 
-### RabbitMQ Topology
+## ✅ Done — Phase 2: Data Persistence & Device Management
 
-- `sensor.exchange` (topic) → `sensor.readings.queue` (binding: `sensor.#`) → gateway consumes
-- `sensor.exchange` (topic) → `processed.data.queue` (binding: `data.processed`) → processing consumes
-- `alerts.exchange` (topic) → `alerts.queue` (binding: `alert.anomaly`) → processing consumes
-- Credentials: `smarthome` / `smarthome123`, ports 5672 (AMQP) + 15672 (management UI)
+All sub-tasks complete; full reactor builds green across **7 modules**.
 
-### Key Gaps (by design — educational project)
+- **2.0 Shared foundation** — `iot-common`: device/heartbeat/persistence `RabbitMQConstants`, `RedisConstants`, shared DTOs/events (`DeviceStatus`, `DeviceDto`, `DeviceRegistrationRequest`, `HeartbeatEvent`). TimescaleDB added to compose with init SQL (`devices` DB, `sensor_readings` hypertable, 1-min continuous aggregate, 7-day compression). `testcontainers-bom` (1.21.3) added to the root pom's `dependencyManagement`.
+- **2.1 Device Registry Service (8084)** — new module: JPA `DeviceEntity`/repo, `DeviceService` (idempotent upsert, lifecycle transitions, Redis `device.status.changed` publish), `HeartbeatListener` (RabbitMQ), `HeartbeatMonitor` (scheduled inactivity sweep → `INACTIVE` after the silence window), REST CRUD + decommission, RFC-7807 error handling.
+- **2.2 History Service (8085)** — new module: `SensorReadingEntity` (implements `Persistable` to force append-only inserts on the hypertable), its **own** queue (`telemetry.persistence.queue`) fanned out from the topic exchange on `data.processed` (persists every event independently of processing-service), `PersistenceService`, `/api/history` query API.
+- **2.3 Gateway validation + caching** — `DeviceRegistryGateway` (`@CircuitBreaker`/`@Retry` REST, fail-open `UNVERIFIED`) + `DeviceRegistryClient` (`@Cacheable` 60s) using the two-bean AOP pattern; `SensorDataListener` rejects unknown/decommissioned devices to the DLQ; Redis pub/sub eviction listener keeps the cache fresh.
+- **2.4 Simulator** — auto-registers every sensor on startup (with scheduled retry, tolerating registry-not-up-yet) and publishes periodic `device.heartbeat` messages.
+- **2.5 Compose + Prometheus** — both new services wired with DB/Redis/RabbitMQ/Zipkin env, health checks, dependency ordering; gateway/simulator get `DEVICE_REGISTRY_URL`; Prometheus scrapes ports 8084/8085. `docker compose config` validates.
+- **2.6 Integration tests** — `DeviceRegistryIntegrationTest` (Postgres + RabbitMQ + Redis) and `HistoryPersistenceIntegrationTest` (TimescaleDB + RabbitMQ, end-to-end publish→persist), both guarded with `@Testcontainers(disabledWithoutDocker = true)` so the build stays green without a Docker daemon.
 
-- All analytics in-memory (no database)
-- No authentication or authorization
-- No TLS/SSL on AMQP or HTTP
-- No Dead Letter Queues — failed messages after retries are lost
-- No circuit breakers
-- No message deduplication or idempotency
-- Alerts are console-logged only (not sent anywhere)
-- No distributed tracing or centralized logging
-- No Docker images for the Java services (only RabbitMQ in compose)
+---
 
-## What Was Accomplished This Session
+## ⏳ Left to do
 
-### 1. Full Codebase Analysis
+### Phase 3 — Security & Notifications (next milestone)
+- IAM Service (Spring Authorization Server, OAuth 2.1/JWT); secure REST APIs as resource servers.
+- RabbitMQ TLS + mTLS between services.
+- Notification Service (email/SMS/push/webhook); move alert handling out of `processing-service`.
+- Spring Cloud Gateway as the edge.
 
-Deep-read every Java source file (23 classes), all configs, docker-compose, and docs. Mapped the complete message flow: Simulator → sensor.exchange → gateway (validate → enrich → anomaly detect) → processed.data.queue + alerts.queue → processing-service (in-memory stats + log alerts).
+### Phase 4 — Kubernetes & CI/CD
+- Helm charts; RabbitMQ operator; TimescaleDB chart; observability stack.
+- Vault for secrets; CI/CD pipeline; Istio (optional); load testing.
 
-### 2. Created `production_plan.md` (466 lines)
+### Also pending (from the plan, not yet started)
+- **Frontend dashboard** — `production_plan.md` calls for a React/Next.js (or Vite) dashboard: real-time monitoring (SSE/WebSocket from `processing-service`), historical analytics (TimescaleDB), device management UI, alert center, JWT auth via IAM, routed through Spring Cloud Gateway. A streaming endpoint still needs to be added to `processing-service`. Likely lives in a new `dashboard/` dir outside the Maven reactor. Depends on Phase 2/3 backend work.
 
-Comprehensive production-readiness roadmap covering:
+---
 
-- **Section 1 — Missing Microservices:** IAM Service (OAuth 2.1, JWT, Spring Authorization Server), Device Registry Service (lifecycle state machine, PostgreSQL + Redis), Notification Service (email/SMS/push via SendGrid/Twilio/FCM, dedup), Persistence/History Service (TimescaleDB hypertables, continuous aggregates, retention policies)
-- **Section 2 — Design & Infrastructure Improvements:** Data persistence strategy (TimescaleDB + PostgreSQL + Redis), RabbitMQ DLQ topology with full diagram, retry policies, Resilience4j circuit breakers, broker security (TLS, per-service credentials, topic permissions), inter-service mTLS, JWT validation flow, observability (Micrometer/OTel/Zipkin tracing, Loki logging, Prometheus/Grafana metrics), **Gateway Redis Cache Layer** (device status cache, message deduplication via SET NX, per-device rate limiting, dynamic threshold config cache, Redis Docker Compose config)
-- **Section 3 — Implementation Roadmap:** 4 phases over 16 weeks — Phase 1: Foundation & Resilience (Actuator, DLQs, publisher confirms, Resilience4j, Redis gateway cache with dedup/rate-limiting/thresholds, structured logging, tracing, Dockerfiles) → Phase 2: Core New Services (TimescaleDB, Persistence Service, Device Registry, device status caching, integration tests) → Phase 3: Security & Notifications (IAM, OAuth2 resource server, RabbitMQ TLS, Notification Service, Spring Cloud Gateway, mTLS) → Phase 4: Kubernetes & CI/CD (Helm charts, RabbitMQ Operator, observability stack, Vault, CI/CD pipeline, Istio, load testing)
-- **Target architecture diagram** (ASCII) and **technology choices summary table**
+## Key decisions / gotchas
+- **Spring Cloud train:** `2025.1.2` (Oakwood) is required for Boot 4.0.x.
+- **AOP proxying:** Resilience4j annotations must live on a *separate* bean (`OutboundPublisher`) — self-invocation inside `SensorDataListener` would bypass the proxy.
+- **Fail-open design:** dedup, rate-limit, and threshold lookups all fall back gracefully if Redis is down (logged as WARN) so a Redis outage never drops live traffic.
+- **Reactor install:** if a single-module goal complains about a missing `iot-common` artifact, run a full `./mvnw package` first to install it to the local repo.
+- **YAML:** keep a single top-level `gateway:` key in `application.yml` (Redis/feature config and thresholds are merged under it).
+- **Fan-out persistence (Phase 2):** history-service binds its *own* queue (`telemetry.persistence.queue`) to the topic exchange on `data.processed`, so it persists every event independently of processing-service's analytics — it is **not** a competing consumer on `processed.data.queue`. This deviates from the original plan wording; `production_plan.md` has been updated to match.
+- **Two-bean registry client (Phase 2):** the gateway splits the device lookup across `DeviceRegistryGateway` (`@CircuitBreaker`/`@Retry`) and `DeviceRegistryClient` (`@Cacheable`) for the same AOP-proxy reason as `OutboundPublisher`.
+- **Append-only hypertable:** `SensorReadingEntity` implements `Persistable` (`isNew()` always `true`) so Hibernate always issues INSERTs against the TimescaleDB hypertable (no SELECT-before-INSERT).
 
-### 3. Redis at Gateway Layer (added to plan after discussion)
-
-User asked whether Redis should be added at the gateway layer. Analysis confirmed four high-value use cases: device status cache (TTL 60s + pub/sub invalidation), message deduplication (SET NX EX 300), per-device rate limiting (INCR/EXPIRE sliding window), dynamic threshold config. Added as Section 2.5 in the plan and integrated into Phase 1 (steps 1.5–1.8) and Phase 2 (step 2.4).
-
-## Pending Task — NOT YET STARTED
-
-### Frontend Dashboard Plan
-
-The user requested a comprehensive frontend dashboard implementation plan to be **added to `production_plan.md`**. The request was detailed and covers:
-
-1. **Technology Stack:** Frontend framework (React + Next.js or Vite), state management for real-time data (TanStack Query), visualization libraries (Recharts or D3.js) for time-series telemetry
-2. **Core Functional Modules:**
-   - Real-time Dashboard — live sensor readings via WebSockets or SSE connected to `processing-service`
-   - Historical Analytics — querying/graphing historical trends from `persistence-service` (TimescaleDB)
-   - Device Management UI — interface for `device-registry-service` (view metadata, status, lifecycle actions)
-   - Alert Center — real-time anomaly alerts + searchable AlertEvent history
-3. **Integration & Security:**
-   - Authentication — login flow, JWT token management (storage, interceptors, refresh logic) with `IAM-service`
-   - API Gateway — routing frontend requests through Spring Cloud Gateway
-4. **Implementation Phases:** Prioritized rollout (e.g., Phase 1: Real-time Monitoring, Phase 2: History & Auth, Phase 3: Device Management) including Dockerization and CI/CD
-
-**Important context for the next session:**
-- The user is learning by building this project — the plan should be educational and hands-on
-- The plan should be appended to the existing `production_plan.md` (currently 466 lines, ends with the technology choices summary table)
-- It should align with the existing backend phases (the backend's Phase 2 builds the persistence-service and device-registry that the dashboard depends on; Phase 3 builds IAM and notification-service)
-- The processing-service already has REST endpoints the dashboard can consume immediately (see REST API table above)
-- A new SSE or WebSocket endpoint will need to be added to processing-service for real-time streaming to the browser
-- The plan needs to specify where the frontend lives in the repo structure (likely a new `dashboard/` directory at root, outside the Maven multi-module)
-
-## User Preferences
-
-- Learning-oriented — the user is building this project to learn production patterns
-- Prefers concrete, actionable plans with specific technology choices and code-level guidance
-- Wants plans written to `production_plan.md` (not just chat responses)
-- Engaged and asks good follow-up questions (e.g., the Redis gateway cache discussion)
+## Reference docs
+- `production_plan.md` — authoritative 4-phase roadmap.
+- `ARCHITECTURE_WALKTHROUGH.md`, `SERVICE_GUIDE.md` — design + per-service deep dives.
