@@ -1,5 +1,6 @@
 D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\config\RabbitMQConfig.java
 D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\config\RestClientConfig.java
+D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\config\SecurityConfig.java
 D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\config\SensorConfig.java
 D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\controller\SimulatorController.java
 D:\workspaces\iot\sensor-simulator-service\src\main\java\com\smarthome\sensor\SensorSimulatorApplication.java

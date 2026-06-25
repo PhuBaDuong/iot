@@ -1,6 +1,7 @@
 D:\workspaces\iot\gateway-service\src\main\java\com\smarthome\gateway\config\RabbitMQConfig.java
 D:\workspaces\iot\gateway-service\src\main\java\com\smarthome\gateway\config\RedisConfig.java
 D:\workspaces\iot\gateway-service\src\main\java\com\smarthome\gateway\config\RestClientConfig.java
+D:\workspaces\iot\gateway-service\src\main\java\com\smarthome\gateway\config\SecurityConfig.java
 D:\workspaces\iot\gateway-service\src\main\java\com\smarthome\gateway\config\ThresholdConfig.java
 D:\workspaces\iot\gateway-service\src\main\java\com\smarthome\gateway\controller\GatewayController.java
 D:\workspaces\iot\gateway-service\src\main\java\com\smarthome\gateway\GatewayServiceApplication.java

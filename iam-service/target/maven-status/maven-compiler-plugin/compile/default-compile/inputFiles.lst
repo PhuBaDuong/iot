@@ -1,0 +1,15 @@
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\config\AuthorizationServerConfig.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\config\DataInitializer.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\config\RegisteredClientConfig.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\config\SecurityConfig.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\controller\UserController.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\dto\RegisterRequest.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\dto\UserResponse.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\entity\Role.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\entity\User.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\IamServiceApplication.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\repository\RoleRepository.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\repository\UserRepository.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\service\CustomUserDetails.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\service\CustomUserDetailsService.java
+D:\workspaces\iot\iam-service\src\main\java\com\smarthome\iam\service\UserService.java

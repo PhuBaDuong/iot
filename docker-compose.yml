@@ -133,6 +133,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       DEVICE_REGISTRY_URL: http://device-registry-service:8084
+      IAM_ISSUER: http://iam-service:9000
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       rabbitmq:
@@ -140,6 +141,8 @@ services:
       redis:
         condition: service_healthy
       device-registry-service:
+        condition: service_started
+      iam-service:
         condition: service_started
       zipkin:
         condition: service_started
@@ -165,10 +168,13 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: smarthome
       RABBITMQ_PASSWORD: smarthome123
+      IAM_ISSUER: http://iam-service:9000
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       rabbitmq:
         condition: service_healthy
+      iam-service:
+        condition: service_started
       zipkin:
         condition: service_started
     healthcheck:
@@ -253,6 +259,38 @@ services:
       start_period: 60s
 
   # ---------------------------------------------------------------------------
+  # IAM Service - OAuth 2.1 / OIDC Authorization Server (issues & signs JWTs)
+  # ---------------------------------------------------------------------------
+  iam-service:
+    build:
+      context: .
+      dockerfile: iam-service/Dockerfile
+    container_name: smarthome-iam
+    ports:
+      - "9000:9000"
+    environment:
+      # Issuer must be the in-cluster URL so the "iss" claim and JWKS URL resolve
+      # consistently for the backend resource servers.
+      IAM_ISSUER: http://iam-service:9000
+      DB_HOST: timescaledb
+      DB_PORT: 5432
+      DB_NAME: smarthome_iam
+      DB_USERNAME: smarthome
+      DB_PASSWORD: smarthome123
+      ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    depends_on:
+      timescaledb:
+        condition: service_healthy
+      zipkin:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
   # Sensor Simulator Service - publishes synthetic sensor readings
   # ---------------------------------------------------------------------------
   sensor-simulator-service:
@@ -268,6 +306,7 @@ services:
       RABBITMQ_USERNAME: smarthome
       RABBITMQ_PASSWORD: smarthome123
       DEVICE_REGISTRY_URL: http://device-registry-service:8084
+      IAM_ISSUER: http://iam-service:9000
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
     depends_on:
       rabbitmq:
@@ -275,6 +314,8 @@ services:
       gateway-service:
         condition: service_started
       device-registry-service:
+        condition: service_started
+      iam-service:
         condition: service_started
       zipkin:
         condition: service_started

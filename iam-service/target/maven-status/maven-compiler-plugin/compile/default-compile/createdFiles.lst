@@ -1,0 +1,15 @@
+com\smarthome\iam\dto\UserResponse.class
+com\smarthome\iam\service\UserService.class
+com\smarthome\iam\config\DataInitializer.class
+com\smarthome\iam\repository\RoleRepository.class
+com\smarthome\iam\service\CustomUserDetailsService.class
+com\smarthome\iam\service\CustomUserDetails.class
+com\smarthome\iam\config\AuthorizationServerConfig.class
+com\smarthome\iam\config\RegisteredClientConfig.class
+com\smarthome\iam\entity\Role.class
+com\smarthome\iam\repository\UserRepository.class
+com\smarthome\iam\controller\UserController.class
+com\smarthome\iam\dto\RegisterRequest.class
+com\smarthome\iam\config\SecurityConfig.class
+com\smarthome\iam\entity\User.class
+com\smarthome\iam\IamServiceApplication.class

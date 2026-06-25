@@ -1,3 +1,5 @@
-com\smarthome\gateway\service\RateLimitingServiceTest.class
+com\smarthome\gateway\security\GatewaySecurityTest.class
+com\smarthome\gateway\security\JwtAuthConverterFactoryTest.class
 com\smarthome\gateway\service\DeduplicationServiceTest.class
+com\smarthome\gateway\service\RateLimitingServiceTest.class
 com\smarthome\gateway\service\ThresholdServiceTest.class

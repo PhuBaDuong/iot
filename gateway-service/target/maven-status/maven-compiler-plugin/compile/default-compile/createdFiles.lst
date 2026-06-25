@@ -6,6 +6,7 @@ com\smarthome\gateway\service\AnomalyDetectionService$AnomalyDetails.class
 com\smarthome\gateway\service\DlqMonitorService.class
 com\smarthome\gateway\service\ThresholdService.class
 com\smarthome\gateway\config\ThresholdConfig$ThresholdRange.class
+com\smarthome\gateway\config\SecurityConfig.class
 com\smarthome\gateway\service\AnomalyDetectionService.class
 com\smarthome\gateway\service\DeviceRegistryGateway.class
 com\smarthome\gateway\listener\SensorDataListener$1.class

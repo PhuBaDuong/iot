@@ -8,6 +8,7 @@ com\smarthome\common\event\SensorDataEvent.class
 com\smarthome\common\constants\RedisConstants.class
 com\smarthome\common\dto\DeviceRegistrationRequest.class
 com\smarthome\common\constants\RabbitMQConstants.class
+com\smarthome\common\security\JwtAuthConverterFactory.class
 com\smarthome\common\dto\SensorReading$Builder.class
 com\smarthome\common\event\AlertEvent$Severity.class
 com\smarthome\common\dto\DeviceStatus.class

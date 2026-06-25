@@ -19,6 +19,7 @@ COPY processing-service/pom.xml processing-service/
 COPY sensor-simulator-service/pom.xml sensor-simulator-service/
 COPY device-registry-service/pom.xml device-registry-service/
 COPY history-service/pom.xml history-service/
+COPY iam-service/pom.xml iam-service/
 RUN mvn -B -q -pl processing-service -am -DskipTests dependency:go-offline
 
 # Copy sources and build the executable jar.

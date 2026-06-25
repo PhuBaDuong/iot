@@ -8,3 +8,4 @@ D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\dto\SensorType.j
 D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\event\AlertEvent.java
 D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\event\HeartbeatEvent.java
 D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\event\SensorDataEvent.java
+D:\workspaces\iot\iot-common\src\main\java\com\smarthome\common\security\JwtAuthConverterFactory.java

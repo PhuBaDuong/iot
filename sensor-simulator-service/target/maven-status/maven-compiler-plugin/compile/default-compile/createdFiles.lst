@@ -1,10 +1,11 @@
+com\smarthome\sensor\SensorSimulatorApplication.class
+com\smarthome\sensor\config\RestClientConfig.class
+com\smarthome\sensor\service\SensorSimulatorService.class
+com\smarthome\sensor\config\SecurityConfig.class
 com\smarthome\sensor\controller\SimulatorController.class
 com\smarthome\sensor\config\SensorConfig$SensorDefinition.class
 com\smarthome\sensor\service\DeviceRegistrationService.class
 com\smarthome\sensor\service\HeartbeatPublisher.class
-com\smarthome\sensor\SensorSimulatorApplication.class
 com\smarthome\sensor\service\SensorSimulatorService$1.class
-com\smarthome\sensor\config\RestClientConfig.class
 com\smarthome\sensor\config\SensorConfig.class
-com\smarthome\sensor\service\SensorSimulatorService.class
 com\smarthome\sensor\config\RabbitMQConfig.class
