@@ -28,3 +28,13 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### Build output ###
+target/
+
+# TLS certificates (generated, not committed)
+certs/*.pem
+certs/*.p12
+certs/*.csr
+certs/*.srl
+certs/*.cnf

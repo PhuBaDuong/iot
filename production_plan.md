@@ -364,13 +364,13 @@ Prioritized into four phases, each building on the previous. Estimated timelines
 
 *Goal: Lock down the platform and enable real-world alerting.*
 
-> **Status: 🔶 In progress.** Steps 3.1, 3.2, 3.4, and 3.5 are complete. Steps 3.3, 3.6, and 3.7 remain. See `HANDOFF.md` for the as-built summary.
+> **Status: 🔶 In progress.** Steps 3.1–3.5 are complete. Step 3.3 (Secure RabbitMQ) is complete. Steps 3.6 and 3.7 remain. See `HANDOFF.md` for the as-built summary.
 
 | Step | Action |
 |---|---|
 | 3.1 | **Build IAM Service.** Spring Authorization Server. PostgreSQL user/role store. JWT issuance + JWKS endpoint. Device credential provisioning. ✅ done |
 | 3.2 | **Secure REST APIs.** Add `spring-boot-starter-oauth2-resource-server` to all services. `SecurityFilterChain` validates JWTs. `@PreAuthorize` on endpoints. *(As built: all 6 services — gateway, processing, simulator, device-registry, history, notification — secured as resource servers with RBAC via shared `JwtAuthConverterFactory`. IAM service uses its own form-login + authorization-server filter chains.)* ✅ done |
-| 3.3 | **Secure RabbitMQ.** Enable TLS on broker. Per-service credentials with topic permissions. Rotate credentials via Vault. |
+| 3.3 | **Secure RabbitMQ.** Enable TLS on broker. Per-service credentials with topic permissions. *(As built: RabbitMQ 3.13 with TLS on port 5671 (TLSv1.2/1.3), self-signed CA + server cert via `certs/generate-certs.sh`, PKCS12 truststore for Spring Boot clients. 7 users in `rabbitmq/definitions.json` — admin + 6 least-privilege service accounts. Full topology (exchanges, queues, bindings, DLX args) pre-declared in definitions. All 6 services use `spring.rabbitmq.ssl.*` config defaulting to `false` for local dev; Docker Compose overrides to `true` on port 5671. Credential rotation via Vault deferred to Phase 4.)* ✅ done |
 | 3.4 | **Build Notification Service.** Consumes `alerts.queue`. Integrates with SendGrid (email), Twilio (SMS), FCM (push). Notification preferences in PostgreSQL. Deduplication with sliding window. *(As built: `notification-service` on port 8086 with `NotificationPreference`/`NotificationRecord` JPA entities, `EmailChannel`/`SmsChannel`/`WebhookChannel` stub implementations, `AlertNotificationService` with dedup and severity filtering, REST API for preferences and history, `notifications` database in TimescaleDB.)* ✅ done |
 | 3.5 | **Remove alert handling from processing-service.** Delete `AlertListener` and `AlertHandlerService`. Notification Service takes ownership of `alerts.queue`. ✅ done |
 | 3.6 | **Add Spring Cloud Gateway** as the single entry point for all REST traffic. JWT validation, rate limiting, request logging. |

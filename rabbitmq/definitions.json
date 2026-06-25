@@ -1,0 +1,56 @@
+{
+  "rabbit_version": "3.13.0",
+  "rabbitmq_version": "3.13.0",
+  "users": [
+    { "name": "admin", "password": "admin-secret", "tags": "administrator" },
+    { "name": "gateway-svc", "password": "gw-secret-2024", "tags": "" },
+    { "name": "processing-svc", "password": "proc-secret-2024", "tags": "" },
+    { "name": "registry-svc", "password": "reg-secret-2024", "tags": "" },
+    { "name": "history-svc", "password": "hist-secret-2024", "tags": "" },
+    { "name": "notification-svc", "password": "notif-secret-2024", "tags": "" },
+    { "name": "simulator-svc", "password": "sim-secret-2024", "tags": "" }
+  ],
+  "vhosts": [{ "name": "/" }],
+  "permissions": [
+    { "user": "admin", "vhost": "/", "configure": ".*", "write": ".*", "read": ".*" },
+    { "user": "gateway-svc", "vhost": "/", "configure": "", "write": "sensor\\.exchange|dlx\\.exchange", "read": "sensor\\.readings\\.queue|sensor\\.readings\\.dlq" },
+    { "user": "processing-svc", "vhost": "/", "configure": "", "write": "dlx\\.exchange", "read": "processed\\.data\\.queue|processed\\.data\\.dlq" },
+    { "user": "registry-svc", "vhost": "/", "configure": "", "write": "dlx\\.exchange", "read": "device\\.heartbeat\\.queue|device\\.heartbeat\\.dlq" },
+    { "user": "history-svc", "vhost": "/", "configure": "", "write": "dlx\\.exchange", "read": "telemetry\\.persistence\\.queue|telemetry\\.persistence\\.dlq" },
+    { "user": "notification-svc", "vhost": "/", "configure": "", "write": "dlx\\.exchange", "read": "alerts\\.queue|alerts\\.dlq" },
+    { "user": "simulator-svc", "vhost": "/", "configure": "", "write": "sensor\\.exchange", "read": "" }
+  ],
+  "topic_permissions": [],
+  "parameters": [],
+  "global_parameters": [],
+  "policies": [],
+  "exchanges": [
+    { "name": "sensor.exchange", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "alerts.exchange", "vhost": "/", "type": "topic", "durable": true, "auto_delete": false, "internal": false, "arguments": {} },
+    { "name": "dlx.exchange", "vhost": "/", "type": "direct", "durable": true, "auto_delete": false, "internal": false, "arguments": {} }
+  ],
+  "queues": [
+    { "name": "sensor.readings.queue", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-dead-letter-exchange": "dlx.exchange", "x-dead-letter-routing-key": "dlx.sensor.readings", "x-message-ttl": 300000 } },
+    { "name": "processed.data.queue", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-dead-letter-exchange": "dlx.exchange", "x-dead-letter-routing-key": "dlx.processed.data" } },
+    { "name": "alerts.queue", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-dead-letter-exchange": "dlx.exchange", "x-dead-letter-routing-key": "dlx.alerts" } },
+    { "name": "device.heartbeat.queue", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-dead-letter-exchange": "dlx.exchange", "x-dead-letter-routing-key": "dlx.device.heartbeat" } },
+    { "name": "telemetry.persistence.queue", "vhost": "/", "durable": true, "auto_delete": false, "arguments": { "x-dead-letter-exchange": "dlx.exchange", "x-dead-letter-routing-key": "dlx.telemetry.persistence" } },
+    { "name": "sensor.readings.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "processed.data.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "alerts.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "device.heartbeat.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} },
+    { "name": "telemetry.persistence.dlq", "vhost": "/", "durable": true, "auto_delete": false, "arguments": {} }
+  ],
+  "bindings": [
+    { "source": "sensor.exchange", "vhost": "/", "destination": "sensor.readings.queue", "destination_type": "queue", "routing_key": "sensor.#", "arguments": {} },
+    { "source": "sensor.exchange", "vhost": "/", "destination": "processed.data.queue", "destination_type": "queue", "routing_key": "data.processed", "arguments": {} },
+    { "source": "alerts.exchange", "vhost": "/", "destination": "alerts.queue", "destination_type": "queue", "routing_key": "alert.anomaly", "arguments": {} },
+    { "source": "sensor.exchange", "vhost": "/", "destination": "device.heartbeat.queue", "destination_type": "queue", "routing_key": "device.heartbeat", "arguments": {} },
+    { "source": "sensor.exchange", "vhost": "/", "destination": "telemetry.persistence.queue", "destination_type": "queue", "routing_key": "data.processed", "arguments": {} },
+    { "source": "dlx.exchange", "vhost": "/", "destination": "sensor.readings.dlq", "destination_type": "queue", "routing_key": "dlx.sensor.readings", "arguments": {} },
+    { "source": "dlx.exchange", "vhost": "/", "destination": "processed.data.dlq", "destination_type": "queue", "routing_key": "dlx.processed.data", "arguments": {} },
+    { "source": "dlx.exchange", "vhost": "/", "destination": "alerts.dlq", "destination_type": "queue", "routing_key": "dlx.alerts", "arguments": {} },
+    { "source": "dlx.exchange", "vhost": "/", "destination": "device.heartbeat.dlq", "destination_type": "queue", "routing_key": "dlx.device.heartbeat", "arguments": {} },
+    { "source": "dlx.exchange", "vhost": "/", "destination": "telemetry.persistence.dlq", "destination_type": "queue", "routing_key": "dlx.telemetry.persistence", "arguments": {} }
+  ]
+}
