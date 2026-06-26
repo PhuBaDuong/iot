@@ -1,8 +1,9 @@
 # =============================================================================
 # Prometheus scrape configuration
 # =============================================================================
-# Scrapes the Spring Boot Actuator Prometheus endpoint of each service. Service
-# names resolve via the Docker Compose network DNS.
+# Scrapes the Spring Boot Actuator Prometheus endpoint of each service over
+# HTTPS (Phase 3.7 mTLS). Uses insecure_skip_verify because the services use
+# self-signed certificates issued by the SmartHome Dev CA.
 # =============================================================================
 global:
   scrape_interval: 15s
@@ -10,41 +11,65 @@ global:
 
 scrape_configs:
   - job_name: gateway-service
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['gateway-service:8082']
 
   - job_name: processing-service
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['processing-service:8083']
 
   - job_name: sensor-simulator-service
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['sensor-simulator-service:8081']
 
   - job_name: device-registry-service
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['device-registry-service:8084']
 
   - job_name: history-service
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['history-service:8085']
 
   - job_name: iam-service
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['iam-service:9000']
 
   - job_name: notification-service
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['notification-service:8086']
 
   - job_name: api-gateway
+    scheme: https
+    tls_config:
+      insecure_skip_verify: true
     metrics_path: /actuator/prometheus
     static_configs:
       - targets: ['api-gateway:8080']

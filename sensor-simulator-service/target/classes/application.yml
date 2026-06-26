@@ -6,6 +6,15 @@
 
 server:
   port: 8081
+  ssl:
+    enabled: ${SSL_ENABLED:false}
+    key-store: ${SSL_KEYSTORE:}
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:changeit}
+    key-store-type: PKCS12
+    client-auth: ${SSL_CLIENT_AUTH:none}
+    trust-store: ${SSL_TRUSTSTORE:}
+    trust-store-password: ${SSL_TRUSTSTORE_PASSWORD:changeit}
+    trust-store-type: PKCS12
 
 spring:
   application:
@@ -51,6 +60,24 @@ spring:
         jwt:
           issuer-uri: ${IAM_ISSUER:http://localhost:9000}
           jwk-set-uri: ${IAM_ISSUER:http://localhost:9000}/oauth2/jwks
+
+  # ---------------------------------------------------------------------------
+  # SSL Bundle: used by RestClient for mTLS to other services (Phase 3.7).
+  # Only active when SSL_ENABLED=true (Docker Compose); empty defaults are
+  # harmless — the bundle is not resolved unless explicitly requested.
+  # ---------------------------------------------------------------------------
+  ssl:
+    bundle:
+      jks:
+        internal:
+          keystore:
+            location: ${SSL_KEYSTORE:}
+            password: ${SSL_KEYSTORE_PASSWORD:changeit}
+            type: PKCS12
+          truststore:
+            location: ${SSL_TRUSTSTORE:}
+            password: ${SSL_TRUSTSTORE_PASSWORD:changeit}
+            type: PKCS12
 
   # Placeholder for centralized secrets management (enabled in Phase 4):
   #   config:

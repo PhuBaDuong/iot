@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.smarthome.history.security.HistorySecurityTest
 -------------------------------------------------------------------------------
-Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.452 s -- in com.smarthome.history.security.HistorySecurityTest
+Tests run: 3, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 5.832 s -- in com.smarthome.history.security.HistorySecurityTest

@@ -8,6 +8,15 @@
 
 server:
   port: 8080
+  ssl:
+    enabled: ${SSL_ENABLED:false}
+    key-store: ${SSL_KEYSTORE:}
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:changeit}
+    key-store-type: PKCS12
+    client-auth: ${SSL_CLIENT_AUTH:none}
+    trust-store: ${SSL_TRUSTSTORE:}
+    trust-store-password: ${SSL_TRUSTSTORE_PASSWORD:changeit}
+    trust-store-type: PKCS12
 
 spring:
   application:
@@ -81,6 +90,23 @@ spring:
         jwt:
           issuer-uri: ${IAM_ISSUER:http://localhost:9000}
           jwk-set-uri: ${IAM_ISSUER:http://localhost:9000}/oauth2/jwks
+
+  # ---------------------------------------------------------------------------
+  # SSL Bundle: used by the gateway HttpClient for mTLS to HTTPS backends
+  # (Phase 3.7). Only resolved when GATEWAY_SSL_BUNDLE is set (Docker Compose).
+  # ---------------------------------------------------------------------------
+  ssl:
+    bundle:
+      jks:
+        internal:
+          keystore:
+            location: ${SSL_KEYSTORE:}
+            password: ${SSL_KEYSTORE_PASSWORD:changeit}
+            type: PKCS12
+          truststore:
+            location: ${SSL_TRUSTSTORE:}
+            password: ${SSL_TRUSTSTORE_PASSWORD:changeit}
+            type: PKCS12
 
   # ---------------------------------------------------------------------------
   # Redis: backing store for the RequestRateLimiter

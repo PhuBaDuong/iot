@@ -7,6 +7,15 @@
 
 server:
   port: 8085
+  ssl:
+    enabled: ${SSL_ENABLED:false}
+    key-store: ${SSL_KEYSTORE:}
+    key-store-password: ${SSL_KEYSTORE_PASSWORD:changeit}
+    key-store-type: PKCS12
+    client-auth: ${SSL_CLIENT_AUTH:none}
+    trust-store: ${SSL_TRUSTSTORE:}
+    trust-store-password: ${SSL_TRUSTSTORE_PASSWORD:changeit}
+    trust-store-type: PKCS12
 
 spring:
   application:
