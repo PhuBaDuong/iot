@@ -1,0 +1,67 @@
+# Default values for the reusable spring-service chart.
+replicaCount: 2
+
+image:
+  repository: ghcr.io/iot-smarthome/default
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+  containerPort: 8080
+
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts: []
+  tls: []
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 384Mi
+  limits:
+    cpu: "1"
+    memory: 768Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+probes:
+  liveness:
+    path: /actuator/health/liveness
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    failureThreshold: 3
+  readiness:
+    path: /actuator/health/readiness
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    failureThreshold: 3
+
+env: {}
+
+envFrom: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/actuator/prometheus"
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

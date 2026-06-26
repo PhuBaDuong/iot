@@ -1,0 +1,268 @@
+# =============================================================================
+# IoT Smart Home — CI/CD Pipeline
+# =============================================================================
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}
+  JAVA_VERSION: "25"
+  HELM_VERSION: "3.17.0"
+
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Stage 1: Lint
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Helm lint
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+      - run: |
+          helm dependency build helm/smarthome
+          helm lint helm/smarthome
+          helm lint helm/charts/spring-service
+
+      - name: Hadolint Dockerfiles
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: "api-gateway/Dockerfile"
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: "sensor-simulator-service/Dockerfile"
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: "gateway-service/Dockerfile"
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: "processing-service/Dockerfile"
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: "device-registry-service/Dockerfile"
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: "history-service/Dockerfile"
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: "iam-service/Dockerfile"
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: "notification-service/Dockerfile"
+
+  # ---------------------------------------------------------------------------
+  # Stage 2: Unit Tests
+  # ---------------------------------------------------------------------------
+  unit-test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Run unit tests
+        run: ./mvnw -B test -DskipITs
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: "**/target/surefire-reports/*.xml"
+
+  # ---------------------------------------------------------------------------
+  # Stage 3: Integration Tests
+  # ---------------------------------------------------------------------------
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: unit-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          cache: maven
+
+      - name: Run integration tests
+        run: ./mvnw -B verify -DskipUTs
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: "**/target/failsafe-reports/*.xml"
+
+  # ---------------------------------------------------------------------------
+  # Stage 4: Build & Push Docker Images
+  # ---------------------------------------------------------------------------
+  build-push:
+    name: Build & Push Images
+    runs-on: ubuntu-latest
+    needs: [lint, integration-test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        service:
+          - api-gateway
+          - sensor-simulator-service
+          - gateway-service
+          - processing-service
+          - device-registry-service
+          - history-service
+          - iam-service
+          - notification-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ---------------------------------------------------------------------------
+  # Stage 5: Security Scan
+  # ---------------------------------------------------------------------------
+  trivy-scan:
+    name: Trivy Security Scan
+    runs-on: ubuntu-latest
+    needs: build-push
+    strategy:
+      matrix:
+        service:
+          - api-gateway
+          - sensor-simulator-service
+          - gateway-service
+          - processing-service
+          - device-registry-service
+          - history-service
+          - iam-service
+          - notification-service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: "${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:latest"
+          format: sarif
+          output: "trivy-${{ matrix.service }}.sarif"
+          severity: "CRITICAL,HIGH"
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-${{ matrix.service }}.sarif"
+
+  # ---------------------------------------------------------------------------
+  # Stage 6: Deploy to Staging
+  # ---------------------------------------------------------------------------
+  deploy-staging:
+    name: Deploy Staging
+    runs-on: ubuntu-latest
+    needs: trivy-scan
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Set up kubeconfig
+        uses: azure/k8s-set-context@v4
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG_STAGING }}
+
+      - name: Deploy to staging
+        run: |
+          helm dependency build helm/smarthome
+          helm upgrade --install smarthome helm/smarthome \
+            --namespace smarthome-staging --create-namespace \
+            -f helm/smarthome/values.yaml \
+            -f helm/smarthome/values-staging.yaml \
+            --set global.image.tag=$(git rev-parse --short HEAD) \
+            --wait --timeout 5m
+
+  # ---------------------------------------------------------------------------
+  # Stage 7: Deploy to Production (manual approval)
+  # ---------------------------------------------------------------------------
+  deploy-production:
+    name: Deploy Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Set up kubeconfig
+        uses: azure/k8s-set-context@v4
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
+
+      - name: Deploy to production
+        run: |
+          helm dependency build helm/smarthome
+          helm upgrade --install smarthome helm/smarthome \
+            --namespace smarthome-production --create-namespace \
+            -f helm/smarthome/values.yaml \
+            -f helm/smarthome/values-production.yaml \
+            --set global.image.tag=$(git rev-parse --short HEAD) \
+            --wait --timeout 10m

@@ -1,0 +1,39 @@
+apiVersion: v2
+name: smarthome
+description: IoT Smart Home umbrella Helm chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+dependencies:
+  - name: spring-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    alias: api-gateway
+  - name: spring-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    alias: sensor-simulator
+  - name: spring-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    alias: gateway-service
+  - name: spring-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    alias: processing-service
+  - name: spring-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    alias: device-registry
+  - name: spring-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    alias: history-service
+  - name: spring-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    alias: iam-service
+  - name: spring-service
+    version: 0.1.0
+    repository: file://../charts/spring-service
+    alias: notification-service

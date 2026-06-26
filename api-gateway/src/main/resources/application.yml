@@ -128,6 +128,13 @@ management:
   endpoint:
     health:
       show-details: always
+      probes:
+        enabled: true
+      group:
+        readiness:
+          include: readinessState,redis
+        liveness:
+          include: livenessState
     gateway:
       enabled: true
   metrics:
