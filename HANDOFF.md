@@ -1,13 +1,13 @@
 x`# Project Handoff — IoT Smart Home Monitor
 
 Status snapshot for the production-readiness effort tracked in `production_plan.md`.
-**Phases 1, 2, 3A, and 3B are complete and tested. Phase 3 partially remains (3C, 3.6, 3.7). Phase 4 is not started.**
+**Phases 1, 2, 3A, 3B, 3C, 3.4/3.5, and 3.6 are complete and tested. Phase 3.7 remains. Phase 4 is not started.**
 
 - **Stack:** Spring Boot 4.0.1, Java 25, Spring Cloud 2025.1.2 (Oakwood), Maven multi-module reactor.
-- **Modules:** `iot-common`, `sensor-simulator-service` (8081), `gateway-service` (8082), `processing-service` (8083), `device-registry-service` (8084), `history-service` (8085), `notification-service` (8086), `iam-service` (9000).
+- **Modules:** `iot-common`, `sensor-simulator-service` (8081), `gateway-service` (8082), `processing-service` (8083), `device-registry-service` (8084), `history-service` (8085), `notification-service` (8086), `iam-service` (9000), `api-gateway` (8080).
 - **Datastores:** RabbitMQ, Redis, TimescaleDB (`telemetry`, `devices`, `notifications` databases), PostgreSQL (`smarthome_iam` database).
-- **Build:** `./mvnw clean package` (full reactor, 9 modules) — green. `./mvnw clean test` — unit tests green; Testcontainers integration tests run when Docker is available, otherwise skip cleanly.
-- **Run locally:** `docker compose up --build` brings up the full stack (RabbitMQ, Redis, TimescaleDB, Zipkin, Prometheus, Grafana + 7 app services including IAM and notification).
+- **Build:** `./mvnw clean package` (full reactor, 10 modules) — green. `./mvnw clean test` — unit tests green; Testcontainers integration tests run when Docker is available, otherwise skip cleanly.
+- **Run locally:** `docker compose up --build` brings up the full stack (RabbitMQ, Redis, TimescaleDB, Zipkin, Prometheus, Grafana + 8 app services including IAM, notification, and API Gateway).
 
 ---
 
@@ -96,10 +96,25 @@ TLS encryption and per-service least-privilege credentials on RabbitMQ.
 
 ---
 
+## ✅ Done — Phase 3.6: Spring Cloud Gateway
+
+API Gateway as single entry point for all external REST traffic.
+
+- **New module `api-gateway`** — Spring Cloud Gateway (WebFlux/Netty) on port 8080 with `spring-cloud-starter-gateway-server-webflux`.
+- **Route definitions** — Routes for all 7 backend services: IAM (`/oauth2/**`, `/login/**`, `/api/users/**`), simulator (`/api/simulator/**`), gateway (`/api/gateway/**`), processing (`/api/analytics/**`), device-registry (`/api/devices/**`), history (`/api/history/**`), notification (`/api/notifications/**`).
+- **JWT validation** — Reactive `SecurityWebFilterChain` validates IAM-issued RS256 JWTs via JWKS endpoint (lazy fetch). Maps custom `roles` claim to `ROLE_*` authorities.
+- **Rate limiting** — Redis-backed `RequestRateLimiter` (20 req/s per principal, burst 40). Key resolver uses JWT `sub` claim or falls back to client IP.
+- **Request logging** — `RequestLoggingFilter` (global filter) logs method, path, source, status, and duration for every request.
+- **Observability** — Actuator, Prometheus metrics, Zipkin tracing, structured JSON logging.
+- **Docker Compose** — Service on port 8080 with URIs to all downstream services, Redis, IAM, Zipkin deps.
+- **Prometheus** — Scrape config added for `api-gateway:8080`.
+- **All Dockerfiles updated** — All 8 existing Dockerfiles include `api-gateway/pom.xml` COPY line for reactor POM resolution.
+
+---
+
 ## ⏳ Left to do
 
 ### Phase 3 — remaining items
-- **3.6: Spring Cloud Gateway** — single entry point for all REST traffic; JWT validation, rate limiting, request logging.
 - **3.7: mTLS** — mutual TLS for internal service-to-service REST calls.
 
 ### Phase 4 — Kubernetes & CI/CD

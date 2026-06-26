@@ -1,0 +1,126 @@
+# =============================================================================
+# API Gateway Configuration (Phase 3.6)
+# =============================================================================
+# Single entry point for all external REST traffic. Validates JWTs at the edge,
+# applies Redis-backed rate limiting, logs requests, and proxies to downstream
+# services. Runs on Netty (reactive).
+# =============================================================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+
+  # ---------------------------------------------------------------------------
+  # Spring Cloud Gateway: route definitions
+  # ---------------------------------------------------------------------------
+  cloud:
+    gateway:
+      routes:
+        # IAM / OAuth2 endpoints — proxied without JWT validation (public paths)
+        - id: iam-service
+          uri: ${IAM_URI:http://localhost:9000}
+          predicates:
+            - Path=/oauth2/**,/login/**,/userinfo,/.well-known/**,/api/users/**
+
+        # Sensor Simulator Service
+        - id: simulator-service
+          uri: ${SIMULATOR_URI:http://localhost:8081}
+          predicates:
+            - Path=/api/simulator/**
+
+        # Gateway Service (data ingestion / validation / anomaly detection)
+        - id: gateway-service
+          uri: ${GATEWAY_URI:http://localhost:8082}
+          predicates:
+            - Path=/api/gateway/**
+
+        # Processing Service (analytics)
+        - id: processing-service
+          uri: ${PROCESSING_URI:http://localhost:8083}
+          predicates:
+            - Path=/api/analytics/**
+
+        # Device Registry Service
+        - id: device-registry-service
+          uri: ${REGISTRY_URI:http://localhost:8084}
+          predicates:
+            - Path=/api/devices/**
+
+        # History Service (telemetry queries)
+        - id: history-service
+          uri: ${HISTORY_URI:http://localhost:8085}
+          predicates:
+            - Path=/api/history/**
+
+        # Notification Service
+        - id: notification-service
+          uri: ${NOTIFICATION_URI:http://localhost:8086}
+          predicates:
+            - Path=/api/notifications/**
+
+      # Default filters applied to all routes
+      default-filters:
+        # Redis rate limiter: 20 requests/second per principal, burst up to 40
+        - name: RequestRateLimiter
+          args:
+            redis-rate-limiter.replenishRate: 20
+            redis-rate-limiter.burstCapacity: 40
+            redis-rate-limiter.requestedTokens: 1
+            key-resolver: "#{@principalKeyResolver}"
+            deny-empty-key: false
+
+  # ---------------------------------------------------------------------------
+  # Security: OAuth2 resource server — validates IAM-issued RS256 JWTs via JWKS
+  # ---------------------------------------------------------------------------
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${IAM_ISSUER:http://localhost:9000}
+          jwk-set-uri: ${IAM_ISSUER:http://localhost:9000}/oauth2/jwks
+
+  # ---------------------------------------------------------------------------
+  # Redis: backing store for the RequestRateLimiter
+  # ---------------------------------------------------------------------------
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+
+# =============================================================================
+# Management / Observability (Actuator + Prometheus + Tracing)
+# =============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+logging:
+  level:
+    root: INFO
+    com.smarthome.gateway.api: DEBUG
+    org.springframework.cloud.gateway: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

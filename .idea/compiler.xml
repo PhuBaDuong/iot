@@ -12,6 +12,7 @@
         <module name="gateway-service" />
         <module name="sensor-simulator-service" />
         <module name="history-service" />
+        <module name="api-gateway" />
         <module name="device-registry-service" />
         <module name="notification-service" />
       </profile>
@@ -19,6 +20,7 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="api-gateway" options="-parameters" />
       <module name="device-registry-service" options="-parameters" />
       <module name="gateway-service" options="-parameters" />
       <module name="history-service" options="-parameters" />

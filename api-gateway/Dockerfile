@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1
 # =============================================================================
-# Processing Service - multi-stage build
+# API Gateway - multi-stage build
 # =============================================================================
 # Build context is the repository root (see docker-compose.yml) so the build
-# stage can compile the iot-common dependency alongside this module.
+# stage can resolve reactor POMs for dependency caching.
 # =============================================================================
 
 # ---- Build stage: JDK 25 + Maven ----
@@ -22,12 +22,11 @@ COPY history-service/pom.xml history-service/
 COPY iam-service/pom.xml iam-service/
 COPY notification-service/pom.xml notification-service/
 COPY api-gateway/pom.xml api-gateway/
-RUN mvn -B -q -pl processing-service -am -DskipTests dependency:go-offline
+RUN mvn -B -q -pl api-gateway -am -DskipTests dependency:go-offline
 
 # Copy sources and build the executable jar.
-COPY iot-common/src iot-common/src
-COPY processing-service/src processing-service/src
-RUN mvn -B -q -pl processing-service -am -DskipTests package
+COPY api-gateway/src api-gateway/src
+RUN mvn -B -q -pl api-gateway -am -DskipTests package
 
 # ---- Runtime stage: minimal JRE 25 ----
 FROM eclipse-temurin:25-jre
@@ -36,7 +35,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -r -u 1001 spring
-COPY --from=build /workspace/processing-service/target/processing-service-*.jar app.jar
+COPY --from=build /workspace/api-gateway/target/api-gateway-*.jar app.jar
 USER spring
-EXPOSE 8083
+EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

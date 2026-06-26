@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.smarthome.sensor.security.SimulatorSecurityTest
 -------------------------------------------------------------------------------
-Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.361 s -- in com.smarthome.sensor.security.SimulatorSecurityTest
+Tests run: 4, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 3.988 s -- in com.smarthome.sensor.security.SimulatorSecurityTest

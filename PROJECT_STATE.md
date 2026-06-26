@@ -1,7 +1,7 @@
 # IoT Smart Home Monitor — Project State
 
 **Last updated:** 2026-06-25
-**Status:** Phases 1, 2, 3A, 3B, 3C, and 3.4/3.5 complete; RabbitMQ secured with TLS and per-service credentials. Full Maven reactor (8 modules) builds green; all unit/security tests pass (26 tests across 6 security test classes) and Docker-dependent integration tests skip cleanly when no daemon is present.
+**Status:** Phases 1, 2, 3A, 3B, 3C, 3.4/3.5, and 3.6 complete; API Gateway added as single entry point. Full Maven reactor (9 modules) builds green; all unit/security tests pass (26 tests across 6 security test classes) and Docker-dependent integration tests skip cleanly when no daemon is present.
 
 ---
 
@@ -28,7 +28,7 @@ A microservices-based IoT monitoring system that ingests synthetic sensor teleme
 
 ## 2. Module Map (Maven Reactor)
 
-Eight modules declared in the root `pom.xml`:
+Nine modules declared in the root `pom.xml`:
 
 | Module | Port | Purpose |
 |---|---|---|
@@ -40,6 +40,7 @@ Eight modules declared in the root `pom.xml`:
 | `history-service` | 8085 | Durable telemetry persistence to TimescaleDB + query API |
 | `iam-service` | 9000 | OAuth 2.1 / OIDC Authorization Server (issues & signs JWTs) |
 | `notification-service` | 8086 | Alert notification dispatch, preferences, dedup, audit log |
+| `api-gateway` | 8080 | Spring Cloud Gateway — JWT validation, rate limiting, request logging |
 
 ---
 
@@ -53,14 +54,14 @@ The project follows `production_plan.md` (with `auth_plan.md` driving Phase 3).
 - ✅ **Phase 3B — Secure remaining services:** `device-registry-service` and `history-service` hardened as OAuth2 resource servers with RBAC; docker-compose wired with `IAM_ISSUER` and `iam-service` dependency; security tests (RegistrySecurityTest 8/8, HistorySecurityTest 3/3).
 - ✅ **Phase 3.4/3.5 — Notification Service & Alert Migration:** New `notification-service` module (port 8086) consuming `alerts.queue`; JPA entities for preferences and notification records; channel abstraction (email/SMS/webhook stubs); dedup and severity filtering; REST API for history and preferences; alert handling removed from `processing-service` (`AlertListener` + `AlertHandlerService` deleted).
 - ✅ **Phase 3C — Secure RabbitMQ:** RabbitMQ 3.13 with TLS on port 5671 (TLSv1.2/1.3); self-signed CA + server cert via `certs/generate-certs.sh`; PKCS12 truststore for Spring Boot clients. 7 users in `rabbitmq/definitions.json` (admin + 6 least-privilege service accounts). Full topology pre-declared in definitions (exchanges, queues, bindings, DLX args). All 6 services have `spring.rabbitmq.ssl.*` config (defaults `false` for local dev; Docker Compose sets `true` on port 5671). Credential rotation via Vault deferred to Phase 4.
-- ⏳ **Phase 3.6 — Spring Cloud Gateway:** edge proxy not started.
+- ✅ **Phase 3.6 — Spring Cloud Gateway:** New `api-gateway` module on port 8080 using `spring-cloud-starter-gateway-server-webflux` (reactive/Netty). Routes to all 7 backend services. Reactive `SecurityWebFilterChain` validates IAM-issued RS256 JWTs via JWKS. Redis-backed `RequestRateLimiter` (20 req/s per principal, burst 40). `RequestLoggingFilter` global filter. Prometheus scrape config added.
 - ⏳ **Phase 3.7 — mTLS:** internal service-to-service mTLS not started.
 
 ---
 
 ## 4. Infrastructure (`docker-compose.yml`)
 
-One stack brings up all backing services plus the eight app services. Internal hostnames equal the compose service names.
+One stack brings up all backing services plus the nine app services. Internal hostnames equal the compose service names.
 
 | Service | Image | Host port(s) | Notes |
 |---|---|---|---|
@@ -77,6 +78,7 @@ One stack brings up all backing services plus the eight app services. Internal h
 | iam-service | built | 9000 | DB `smarthome_iam`, `IAM_ISSUER=http://iam-service:9000` |
 | notification-service | built | 8086 | RabbitMQ, DB `notifications`, `IAM_ISSUER` |
 | sensor-simulator-service | built | 8081 | RabbitMQ, `DEVICE_REGISTRY_URL`, `IAM_ISSUER` |
+| api-gateway | built | 8080 | Routes to all services, Redis rate limiter, `IAM_ISSUER` |
 
 **Common env wiring:** `RABBITMQ_HOST/PORT/USERNAME/PASSWORD`, `RABBITMQ_SSL_ENABLED/TRUSTSTORE/TRUSTSTORE_PASSWORD` (Phase 3C), `REDIS_HOST/PORT`, `DB_HOST/PORT/NAME/USERNAME/PASSWORD`, `IAM_ISSUER`, `ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans`. Each RabbitMQ-using service has its own per-service credentials and mounts `./certs:/certs:ro` for TLS. All app services expose `/actuator/health` healthchecks with a 60s start period. All resource servers depend on `iam-service: condition: service_healthy`. Named volumes persist RabbitMQ, Redis, TimescaleDB, Prometheus, and Grafana data.
 
@@ -237,9 +239,8 @@ Useful endpoints once up: RabbitMQ UI `:15672`, Prometheus `:9090`, Grafana `:30
 
 ## 13. Next Steps (pending)
 
-1. **Phase 3.6** — Spring Cloud Gateway as edge proxy (JWT validation, rate limiting, request logging).
-2. **Phase 3.7** — mTLS for internal service-to-service communication.
-3. **Phase 4** — Production Hardening (Kubernetes/Helm, Vault secrets, CI/CD, load testing).
+1. **Phase 3.7** — mTLS for internal service-to-service communication.
+2. **Phase 4** — Production Hardening (Kubernetes/Helm, Vault secrets, CI/CD, load testing).
 
 ---
 
