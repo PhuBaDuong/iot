@@ -1,0 +1,84 @@
+# =============================================================================
+# Sensor Simulator Service Configuration
+# =============================================================================
+# This service simulates IoT sensors and publishes readings to RabbitMQ.
+# =============================================================================
+
+server:
+  port: 8081
+
+spring:
+  application:
+    name: sensor-simulator-service
+
+  # ===========================================================================
+  # RabbitMQ Connection Configuration
+  # ===========================================================================
+  # LEARNING NOTE: Connection Settings
+  # -----------------------------------
+  # - host: Where RabbitMQ server is running (localhost for development)
+  # - port: AMQP protocol port (5672 is the default)
+  # - username/password: Authentication credentials
+  #
+  # In production, these would come from environment variables or a config server
+  # ===========================================================================
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: smarthome
+    password: smarthome123
+
+# =============================================================================
+# Custom Sensor Simulation Configuration
+# =============================================================================
+# LEARNING NOTE: @ConfigurationProperties
+# ----------------------------------------
+# Spring Boot allows us to bind external configuration to Java objects.
+# This makes configuration type-safe and easy to validate.
+#
+# The 'simulation' prefix means these properties are accessed via:
+# simulation.interval, simulation.sensors[0].id, etc.
+# =============================================================================
+simulation:
+  # How often to generate sensor readings (in milliseconds)
+  interval: 2000
+
+  # List of simulated sensors
+  # Each sensor has: id, type (must match SensorType enum), and location
+  sensors:
+    - id: temp-sensor-001
+      type: TEMPERATURE
+      location: living-room
+
+    - id: temp-sensor-002
+      type: TEMPERATURE
+      location: bedroom
+
+    - id: humidity-sensor-001
+      type: HUMIDITY
+      location: living-room
+
+    - id: humidity-sensor-002
+      type: HUMIDITY
+      location: bathroom
+
+    - id: motion-sensor-001
+      type: MOTION
+      location: entrance
+
+    - id: light-sensor-001
+      type: LIGHT
+      location: living-room
+
+    - id: pressure-sensor-001
+      type: PRESSURE
+      location: outdoor
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+logging:
+  level:
+    com.smarthome: DEBUG
+    org.springframework.amqp: INFO
+

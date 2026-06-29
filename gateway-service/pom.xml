@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.smarthome</groupId>
+        <artifactId>iot-parent</artifactId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>gateway-service</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Gateway Service</name>
+    <description>
+        Gateway Service for IoT Smart Home Monitor.
+        Receives sensor data from RabbitMQ, validates it, detects anomalies,
+        and routes messages to appropriate queues for further processing.
+    </description>
+
+    <!--
+    =========================================================================
+    LEARNING NOTE: Gateway Service Dependencies
+    =========================================================================
+    This service acts as the entry point for sensor data processing:
+    1. Consumes raw sensor readings from RabbitMQ
+    2. Validates incoming data using Spring Validation
+    3. Detects anomalies based on configurable thresholds
+    4. Routes valid data to processing queue
+    5. Routes anomalies to alerts queue
+    =========================================================================
+    -->
+
+    <dependencies>
+        <!-- Spring AMQP for RabbitMQ integration -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- Spring Web for REST endpoints -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <!-- Spring Validation for input validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Shared DTOs, events, and constants -->
+        <dependency>
+            <groupId>com.smarthome</groupId>
+            <artifactId>iot-common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <!-- Test dependencies -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.amqp</groupId>
+            <artifactId>spring-rabbit-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+
