@@ -1,7 +1,7 @@
 x`# Project Handoff — IoT Smart Home Monitor
 
 Status snapshot for the production-readiness effort tracked in `production_plan.md`.
-**Phases 1, 2, 3A, 3B, 3C, 3.4/3.5, and 3.6 are complete and tested. Phase 3.7 remains. Phase 4 is not started.**
+**Phases 1, 2, 3A, 3B, 3C, 3.4/3.5, 3.6, and 3.7 are complete and tested. Phase 3 is done. Phase 4 is not started.**
 
 - **Stack:** Spring Boot 4.0.1, Java 25, Spring Cloud 2025.1.2 (Oakwood), Maven multi-module reactor.
 - **Modules:** `iot-common`, `sensor-simulator-service` (8081), `gateway-service` (8082), `processing-service` (8083), `device-registry-service` (8084), `history-service` (8085), `notification-service` (8086), `iam-service` (9000), `api-gateway` (8080).
@@ -110,12 +110,21 @@ API Gateway as single entry point for all external REST traffic.
 - **Prometheus** — Scrape config added for `api-gateway:8080`.
 - **All Dockerfiles updated** — All 8 existing Dockerfiles include `api-gateway/pom.xml` COPY line for reactor POM resolution.
 
+### ✅ Done — Phase 3.7: mTLS for internal service-to-service REST
+
+Mutual TLS for all internal REST communication (Phase 3.7).
+
+- **Certificate generation** — `certs/generate-certs.sh` extended to produce per-service PKCS12 keystores for all 8 app services (gateway, processing, device-registry, history, notification, simulator, IAM, api-gateway). Each cert is signed by the shared SmartHome Dev CA with SANs matching Docker service names and `extendedKeyUsage=serverAuth,clientAuth`.
+- **Server HTTPS** — All 8 services have `server.ssl.*` config in `application.yml` (defaults to `enabled: false` for local dev; Docker Compose overrides to `true` with keystore path). `client-auth: need` enforces mutual TLS.
+- **SSL bundles for RestClient** — `gateway-service` and `sensor-simulator-service` use Spring Boot SSL bundles (`spring.ssl.bundle.jks.internal`) to present their client certificate and trust the CA when calling `device-registry-service`. `spring-boot-restclient` added as dependency for `RestClientSsl` support.
+- **API Gateway HTTPS backends** — `api-gateway` defines an SSL bundle and routes to downstream services over HTTPS. `SPRING_CLOUD_GATEWAY_HTTPCLIENT_SSL_SSLBUNDLE=internal` configures Reactor Netty's HttpClient for mTLS.
+- **JVM truststore** — `JAVA_TOOL_OPTIONS` sets `javax.net.ssl.trustStore=/certs/ca-truststore.p12` for all services in Docker Compose, ensuring Spring Security's JWT validation (JWKS fetch from IAM over HTTPS) and all outbound SSL connections trust the internal CA.
+- **Docker Compose** — All service URIs switched from `http://` to `https://`. Healthchecks use `curl -fk https://...`. All services mount `./certs:/certs:ro`.
+- **Prometheus** — All scrape configs updated to `scheme: https` with `tls_config.insecure_skip_verify: true` for self-signed certs.
+
 ---
 
 ## ⏳ Left to do
-
-### Phase 3 — remaining items
-- **3.7: mTLS** — mutual TLS for internal service-to-service REST calls.
 
 ### Phase 4 — Kubernetes & CI/CD
 - Helm charts; RabbitMQ operator; TimescaleDB chart; observability stack.
