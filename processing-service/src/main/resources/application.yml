@@ -12,10 +12,11 @@ spring:
   # RabbitMQ Configuration
   # The processing service acts as a consumer for multiple queues
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: smarthome
-    password: smarthome123
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:smarthome}
+    password: ${RABBITMQ_PASSWORD:smarthome123}
+    virtual-host: ${RABBITMQ_VHOST:/}
     # Listener configuration for consumers
     listener:
       simple:
@@ -36,6 +37,43 @@ spring:
           max-attempts: 3
           max-interval: 10000
           multiplier: 2.0
+
+  # ---------------------------------------------------------------------------
+  # Security: OAuth2 resource server (Phase 3A). Validates IAM-issued RS256 JWTs
+  # locally via JWKS (lazy fetch on first token, so no startup coupling to IAM)
+  # and checks the token issuer.
+  # ---------------------------------------------------------------------------
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${IAM_ISSUER:http://localhost:9000}
+          jwk-set-uri: ${IAM_ISSUER:http://localhost:9000}/oauth2/jwks
+
+  # Placeholder for centralized secrets management (enabled in Phase 4):
+  #   config:
+  #     import: optional:vault://
+
+# =============================================================================
+# Management / Observability (Actuator + Prometheus + Tracing)
+# =============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
 
 # Logging configuration
 logging:

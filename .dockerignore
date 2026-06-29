@@ -1,0 +1,9 @@
+# Build output and VCS - never needed inside the build context
+**/target/
+.git/
+.idea/
+.vscode/
+*.iml
+
+# Markdown docs and local tooling
+*.md

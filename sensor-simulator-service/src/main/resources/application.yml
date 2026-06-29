@@ -23,10 +23,60 @@ spring:
   # In production, these would come from environment variables or a config server
   # ===========================================================================
   rabbitmq:
-    host: localhost
-    port: 5672
-    username: smarthome
-    password: smarthome123
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:smarthome}
+    password: ${RABBITMQ_PASSWORD:smarthome123}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    # Publisher confirms/returns detect broker-side delivery failures.
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+
+  # ---------------------------------------------------------------------------
+  # Security: OAuth2 resource server (Phase 3A). Validates IAM-issued RS256 JWTs
+  # locally via JWKS (lazy fetch on first token, so no startup coupling to IAM)
+  # and checks the token issuer.
+  # ---------------------------------------------------------------------------
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${IAM_ISSUER:http://localhost:9000}
+          jwk-set-uri: ${IAM_ISSUER:http://localhost:9000}/oauth2/jwks
+
+  # Placeholder for centralized secrets management (enabled in Phase 4):
+  #   config:
+  #     import: optional:vault://
+
+# ---------------------------------------------------------------------------
+# Device Registry (Phase 2): base URL the simulator auto-registers against.
+# Overridden in containers via DEVICE_REGISTRY_URL.
+# ---------------------------------------------------------------------------
+device-registry:
+  base-url: ${DEVICE_REGISTRY_URL:http://localhost:8084}
+
+# =============================================================================
+# Management / Observability (Actuator + Prometheus + Tracing)
+# =============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
 
 # =============================================================================
 # Custom Sensor Simulation Configuration
@@ -42,6 +92,12 @@ spring:
 simulation:
   # How often to generate sensor readings (in milliseconds)
   interval: 2000
+
+  # Phase 2: device heartbeat + auto-registration cadence (milliseconds)
+  heartbeat:
+    interval: 15000
+  registration:
+    retry-interval: 30000
 
   # List of simulated sensors
   # Each sensor has: id, type (must match SensorType enum), and location

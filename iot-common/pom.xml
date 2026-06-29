@@ -46,6 +46,23 @@
             <groupId>jakarta.validation</groupId>
             <artifactId>jakarta.validation-api</artifactId>
         </dependency>
+
+        <!--
+            OAuth2 resource-server types (Jwt, JwtAuthenticationConverter) for the
+            shared JwtAuthConverterFactory (Phase 3A). Marked optional so it is NOT
+            forced onto modules that do not enable security (e.g. iot-common itself
+            stays dependency-light); resource servers already pull it in directly.
+        -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-resource-server</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 </project>
 

@@ -3,9 +3,13 @@ package com.smarthome.gateway.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.smarthome.common.constants.RabbitMQConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.retry.MessageRecoverer;
+import org.springframework.amqp.rabbit.retry.RejectAndDontRequeueRecoverer;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
@@ -41,6 +45,8 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 public class RabbitMQConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(RabbitMQConfig.class);
 
     // =========================================================================
     // EXCHANGES
@@ -89,6 +95,10 @@ public class RabbitMQConfig {
     public Queue sensorReadingsQueue() {
         return QueueBuilder
                 .durable(RabbitMQConstants.SENSOR_READINGS_QUEUE)
+                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_EXCHANGE, RabbitMQConstants.DLX_EXCHANGE)
+                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_ROUTING_KEY,
+                        RabbitMQConstants.DLX_SENSOR_READINGS_ROUTING_KEY)
+                .withArgument(RabbitMQConstants.ARG_MESSAGE_TTL, RabbitMQConstants.SENSOR_READINGS_TTL_MS)
                 .build();
     }
 
@@ -100,6 +110,9 @@ public class RabbitMQConfig {
     public Queue processedDataQueue() {
         return QueueBuilder
                 .durable(RabbitMQConstants.PROCESSED_DATA_QUEUE)
+                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_EXCHANGE, RabbitMQConstants.DLX_EXCHANGE)
+                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_ROUTING_KEY,
+                        RabbitMQConstants.DLX_PROCESSED_DATA_ROUTING_KEY)
                 .build();
     }
 
@@ -111,7 +124,65 @@ public class RabbitMQConfig {
     public Queue alertsQueue() {
         return QueueBuilder
                 .durable(RabbitMQConstants.ALERTS_QUEUE)
+                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_EXCHANGE, RabbitMQConstants.DLX_EXCHANGE)
+                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_ROUTING_KEY,
+                        RabbitMQConstants.DLX_ALERTS_ROUTING_KEY)
                 .build();
+    }
+
+    // =========================================================================
+    // DEAD LETTER TOPOLOGY
+    // =========================================================================
+
+    /** Direct exchange that collects all dead-lettered messages. */
+    @Bean
+    public DirectExchange deadLetterExchange() {
+        return ExchangeBuilder
+                .directExchange(RabbitMQConstants.DLX_EXCHANGE)
+                .durable(true)
+                .build();
+    }
+
+    @Bean
+    public Queue sensorReadingsDlq() {
+        return QueueBuilder.durable(RabbitMQConstants.SENSOR_READINGS_DLQ).build();
+    }
+
+    @Bean
+    public Queue processedDataDlq() {
+        return QueueBuilder.durable(RabbitMQConstants.PROCESSED_DATA_DLQ).build();
+    }
+
+    @Bean
+    public Queue alertsDlq() {
+        return QueueBuilder.durable(RabbitMQConstants.ALERTS_DLQ).build();
+    }
+
+    @Bean
+    public Binding sensorReadingsDlqBinding(Queue sensorReadingsDlq, DirectExchange deadLetterExchange) {
+        return BindingBuilder.bind(sensorReadingsDlq).to(deadLetterExchange)
+                .with(RabbitMQConstants.DLX_SENSOR_READINGS_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding processedDataDlqBinding(Queue processedDataDlq, DirectExchange deadLetterExchange) {
+        return BindingBuilder.bind(processedDataDlq).to(deadLetterExchange)
+                .with(RabbitMQConstants.DLX_PROCESSED_DATA_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding alertsDlqBinding(Queue alertsDlq, DirectExchange deadLetterExchange) {
+        return BindingBuilder.bind(alertsDlq).to(deadLetterExchange)
+                .with(RabbitMQConstants.DLX_ALERTS_ROUTING_KEY);
+    }
+
+    /**
+     * After listener retries are exhausted, reject the message without requeueing
+     * so it is routed to the dead-letter exchange instead of looping forever.
+     */
+    @Bean
+    public MessageRecoverer messageRecoverer() {
+        return new RejectAndDontRequeueRecoverer();
     }
 
     // =========================================================================
@@ -196,6 +267,22 @@ public class RabbitMQConfig {
                                          MessageConverter jsonMessageConverter) {
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
         template.setMessageConverter(jsonMessageConverter);
+
+        // Publisher confirms: broker acknowledges (or nacks) that it accepted the message.
+        template.setConfirmCallback((correlation, ack, cause) -> {
+            if (!ack) {
+                log.error("Publisher confirm NACK [correlation={}]: {}",
+                        correlation != null ? correlation.getId() : "n/a", cause);
+            }
+        });
+
+        // Publisher returns: broker returns messages that could not be routed to any queue.
+        template.setMandatory(true);
+        template.setReturnsCallback(returned -> log.error(
+                "Unroutable message returned: exchange={}, routingKey={}, replyCode={}, replyText={}",
+                returned.getExchange(), returned.getRoutingKey(),
+                returned.getReplyCode(), returned.getReplyText()));
+
         return template;
     }
 }

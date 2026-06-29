@@ -4,6 +4,8 @@ import com.smarthome.common.constants.RabbitMQConstants;
 import com.smarthome.common.dto.SensorReading;
 import com.smarthome.common.dto.SensorType;
 import com.smarthome.sensor.config.SensorConfig;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -42,10 +44,14 @@ public class SensorSimulatorService {
 
     private final RabbitTemplate rabbitTemplate;
     private final SensorConfig sensorConfig;
+    private final Counter readingsPublished;
 
-    public SensorSimulatorService(RabbitTemplate rabbitTemplate, SensorConfig sensorConfig) {
+    public SensorSimulatorService(RabbitTemplate rabbitTemplate, SensorConfig sensorConfig,
+                                  MeterRegistry meterRegistry) {
         this.rabbitTemplate = rabbitTemplate;
         this.sensorConfig = sensorConfig;
+        this.readingsPublished = Counter.builder("sensor.readings.published")
+                .description("Total sensor readings published to RabbitMQ").register(meterRegistry);
     }
     
     private final Random random = new Random();
@@ -119,8 +125,10 @@ public class SensorSimulatorService {
             reading
         );
         
-        log.debug("Published reading: {} -> {} = {} {}", 
-            reading.getSensorId(), 
+        readingsPublished.increment();
+
+        log.debug("Published reading: {} -> {} = {} {}",
+            reading.getSensorId(),
             routingKey,
             reading.getValue(),
             reading.getUnit());

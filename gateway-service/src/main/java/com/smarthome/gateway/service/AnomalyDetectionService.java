@@ -2,7 +2,6 @@ package com.smarthome.gateway.service;
 
 import com.smarthome.common.dto.SensorReading;
 import com.smarthome.common.dto.SensorType;
-import com.smarthome.gateway.config.ThresholdConfig;
 import com.smarthome.gateway.config.ThresholdConfig.ThresholdRange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,10 +40,10 @@ public class AnomalyDetectionService {
 
     private static final Logger log = LoggerFactory.getLogger(AnomalyDetectionService.class);
 
-    private final ThresholdConfig thresholdConfig;
+    private final ThresholdService thresholdService;
 
-    public AnomalyDetectionService(ThresholdConfig thresholdConfig) {
-        this.thresholdConfig = thresholdConfig;
+    public AnomalyDetectionService(ThresholdService thresholdService) {
+        this.thresholdService = thresholdService;
     }
 
     /**
@@ -62,8 +61,8 @@ public class AnomalyDetectionService {
         SensorType sensorType = reading.getSensorType();
         double value = reading.getValue();
         
-        // Get configured thresholds for this sensor type
-        ThresholdRange threshold = thresholdConfig.getThresholdForType(sensorType.name());
+        // Get configured thresholds for this sensor type (Redis override or YAML)
+        ThresholdRange threshold = thresholdService.getThreshold(sensorType.name());
         
         if (threshold == null) {
             // No threshold configured for this sensor type

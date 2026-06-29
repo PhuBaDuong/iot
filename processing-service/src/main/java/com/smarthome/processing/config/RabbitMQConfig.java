@@ -1,9 +1,16 @@
 package com.smarthome.processing.config;
 
 import com.smarthome.common.constants.RabbitMQConstants;
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.ExchangeBuilder;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.amqp.rabbit.retry.MessageRecoverer;
+import org.springframework.amqp.rabbit.retry.RejectAndDontRequeueRecoverer;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.context.annotation.Bean;
@@ -51,8 +58,13 @@ public class RabbitMQConfig {
      */
     @Bean
     public Queue processedDataQueue() {
-        // durable=true: queue survives broker restart
-        return new Queue(RabbitMQConstants.PROCESSED_DATA_QUEUE, true);
+        // Arguments MUST match the gateway's declaration of this queue.
+        return QueueBuilder
+                .durable(RabbitMQConstants.PROCESSED_DATA_QUEUE)
+                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_EXCHANGE, RabbitMQConstants.DLX_EXCHANGE)
+                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_ROUTING_KEY,
+                        RabbitMQConstants.DLX_PROCESSED_DATA_ROUTING_KEY)
+                .build();
     }
 
     /**
@@ -67,7 +79,52 @@ public class RabbitMQConfig {
      */
     @Bean
     public Queue alertsQueue() {
-        return new Queue(RabbitMQConstants.ALERTS_QUEUE, true);
+        return QueueBuilder
+                .durable(RabbitMQConstants.ALERTS_QUEUE)
+                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_EXCHANGE, RabbitMQConstants.DLX_EXCHANGE)
+                .withArgument(RabbitMQConstants.ARG_DEAD_LETTER_ROUTING_KEY,
+                        RabbitMQConstants.DLX_ALERTS_ROUTING_KEY)
+                .build();
+    }
+
+    // =========================================================================
+    // DEAD LETTER TOPOLOGY (declared identically in every service)
+    // =========================================================================
+
+    @Bean
+    public DirectExchange deadLetterExchange() {
+        return ExchangeBuilder.directExchange(RabbitMQConstants.DLX_EXCHANGE).durable(true).build();
+    }
+
+    @Bean
+    public Queue processedDataDlq() {
+        return QueueBuilder.durable(RabbitMQConstants.PROCESSED_DATA_DLQ).build();
+    }
+
+    @Bean
+    public Queue alertsDlq() {
+        return QueueBuilder.durable(RabbitMQConstants.ALERTS_DLQ).build();
+    }
+
+    @Bean
+    public Binding processedDataDlqBinding(Queue processedDataDlq, DirectExchange deadLetterExchange) {
+        return BindingBuilder.bind(processedDataDlq).to(deadLetterExchange)
+                .with(RabbitMQConstants.DLX_PROCESSED_DATA_ROUTING_KEY);
+    }
+
+    @Bean
+    public Binding alertsDlqBinding(Queue alertsDlq, DirectExchange deadLetterExchange) {
+        return BindingBuilder.bind(alertsDlq).to(deadLetterExchange)
+                .with(RabbitMQConstants.DLX_ALERTS_ROUTING_KEY);
+    }
+
+    /**
+     * Route messages to the DLX once listener retries are exhausted instead of
+     * requeueing them indefinitely.
+     */
+    @Bean
+    public MessageRecoverer messageRecoverer() {
+        return new RejectAndDontRequeueRecoverer();
     }
 
     /**

@@ -24,6 +24,9 @@
         <module>sensor-simulator-service</module>
         <module>gateway-service</module>
         <module>processing-service</module>
+        <module>device-registry-service</module>
+        <module>history-service</module>
+        <module>iam-service</module>
     </modules>
 
     <properties>
@@ -31,10 +34,33 @@
         <maven.compiler.source>25</maven.compiler.source>
         <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <logstash-logback-encoder.version>8.0</logstash-logback-encoder.version>
+        <!-- Oakwood release train: compatible with Spring Boot 4.0.x -->
+        <spring-cloud.version>2025.1.2</spring-cloud.version>
+        <!-- Testcontainers BOM (Phase 2 integration tests) -->
+        <testcontainers.version>1.21.3</testcontainers.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <!-- Spring Cloud BOM (circuit breakers, and Phase 4 config/vault) -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Testcontainers BOM: manages postgresql/junit-jupiter/rabbitmq modules -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
             <!-- Internal modules -->
             <dependency>
                 <groupId>com.smarthome</groupId>
@@ -52,6 +78,13 @@
                 <groupId>com.fasterxml.jackson.datatype</groupId>
                 <artifactId>jackson-datatype-jsr310</artifactId>
                 <version>2.16.1</version>
+            </dependency>
+
+            <!-- Structured JSON logging encoder (not managed by Spring Boot) -->
+            <dependency>
+                <groupId>net.logstash.logback</groupId>
+                <artifactId>logstash-logback-encoder</artifactId>
+                <version>${logstash-logback-encoder.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -1,0 +1,98 @@
+# =============================================================================
+# Device Registry Service Configuration (Phase 2)
+# =============================================================================
+# Owns device metadata + lifecycle. Consumes heartbeats from RabbitMQ, runs a
+# scheduled inactivity sweep, and announces status changes on Redis pub/sub.
+# =============================================================================
+
+server:
+  port: 8084
+
+spring:
+  application:
+    name: device-registry-service
+
+  # ---------------------------------------------------------------------------
+  # Relational store: the "devices" database on the shared TimescaleDB/Postgres
+  # ---------------------------------------------------------------------------
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:devices}
+    username: ${DB_USERNAME:smarthome}
+    password: ${DB_PASSWORD:smarthome123}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: false
+    open-in-view: false
+
+  # ---------------------------------------------------------------------------
+  # RabbitMQ: heartbeat consumer
+  # ---------------------------------------------------------------------------
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:smarthome}
+    password: ${RABBITMQ_PASSWORD:smarthome123}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        retry:
+          enabled: true
+          initial-interval: 1s
+          max-attempts: 3
+          max-interval: 10s
+          multiplier: 2.0
+
+  # ---------------------------------------------------------------------------
+  # Redis: publish device.status.changed for gateway cache eviction
+  # ---------------------------------------------------------------------------
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+
+# =============================================================================
+# Management / Observability (Actuator + Prometheus + Tracing)
+# =============================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
+
+# =============================================================================
+# Device registry behavior
+# =============================================================================
+# inactive-after: silence window after which an ACTIVE device is marked INACTIVE
+# sweep-interval: how often (ms) the inactivity sweep runs
+registry:
+  heartbeat:
+    inactive-after: ${REGISTRY_INACTIVE_AFTER:5m}
+    sweep-interval: ${REGISTRY_SWEEP_INTERVAL:60000}
+
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+logging:
+  level:
+    root: INFO
+    com.smarthome.registry: DEBUG
+    org.springframework.amqp: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
