@@ -2,7 +2,6 @@ package com.smarthome.processing.security;
 
 import com.smarthome.processing.config.SecurityConfig;
 import com.smarthome.processing.controller.AnalyticsController;
-import com.smarthome.processing.service.AlertHandlerService;
 import com.smarthome.processing.service.AnalyticsService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,9 +33,6 @@ class ProcessingSecurityTest {
 
     @MockitoBean
     private AnalyticsService analyticsService;
-
-    @MockitoBean
-    private AlertHandlerService alertHandlerService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;

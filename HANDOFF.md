@@ -1,13 +1,13 @@
 # Project Handoff — IoT Smart Home Monitor
 
 Status snapshot for the production-readiness effort tracked in `production_plan.md`.
-**Phases 1 and 2 are complete and tested. Phases 3–4 are not started.**
+**Phases 1, 2, 3A, and 3B are complete and tested. Phase 3 partially remains (3C, 3.6, 3.7). Phase 4 is not started.**
 
 - **Stack:** Spring Boot 4.0.1, Java 25, Spring Cloud 2025.1.2 (Oakwood), Maven multi-module reactor.
-- **Modules:** `iot-common`, `sensor-simulator-service` (8081), `gateway-service` (8082), `processing-service` (8083), `device-registry-service` (8084), `history-service` (8085).
-- **Datastores:** RabbitMQ, Redis, TimescaleDB (`telemetry` + `devices` databases).
-- **Build:** `./mvnw clean package` (full reactor, 7 modules) — green. `./mvnw clean test` — 14 gateway unit tests green; 3 Testcontainers integration tests run when Docker is available, otherwise skip cleanly.
-- **Run locally:** `docker compose up --build` brings up the full stack (RabbitMQ, Redis, TimescaleDB, Zipkin, Prometheus, Grafana + 5 app services).
+- **Modules:** `iot-common`, `sensor-simulator-service` (8081), `gateway-service` (8082), `processing-service` (8083), `device-registry-service` (8084), `history-service` (8085), `notification-service` (8086), `iam-service` (9000).
+- **Datastores:** RabbitMQ, Redis, TimescaleDB (`telemetry`, `devices`, `notifications` databases), PostgreSQL (`smarthome_iam` database).
+- **Build:** `./mvnw clean package` (full reactor, 9 modules) — green. `./mvnw clean test` — unit tests green; Testcontainers integration tests run when Docker is available, otherwise skip cleanly.
+- **Run locally:** `docker compose up --build` brings up the full stack (RabbitMQ, Redis, TimescaleDB, Zipkin, Prometheus, Grafana + 7 app services including IAM and notification).
 
 ---
 
@@ -48,20 +48,55 @@ All sub-tasks complete; full reactor builds green across **7 modules**.
 
 ---
 
+## ✅ Done — Phase 3A: IAM Service & Resource Server Security
+
+All services secured as OAuth2 resource servers with role-based access control.
+
+- **IAM Service (port 9000)** — Spring Authorization Server with OAuth 2.1/OIDC. PostgreSQL `smarthome_iam` database with `users`, `roles`, `oauth2_registered_client` tables. RS256 JWT issuance with custom `roles`/`username`/`email` claims. JWKS endpoint at `/oauth2/jwks`. Admin REST API (`/api/users/**`) for user CRUD. Bootstrap admin user seeded on startup. Client-credentials and authorization-code flows supported.
+- **Shared `JwtAuthConverterFactory`** in `iot-common` — maps the custom `roles` JWT claim to `ROLE_*` Spring Security authorities. Used by all resource servers for consistent `hasRole(...)` evaluation.
+- **Resource server wiring** — `spring-boot-starter-oauth2-resource-server` added to gateway, processing, simulator, device-registry, and history services. Each has a `SecurityConfig` with `SecurityFilterChain` validating JWTs against the IAM JWKS endpoint (`IAM_ISSUER` env var). RBAC rules per service (actuator endpoints permit-all, role-gated REST endpoints).
+- **docker-compose** — IAM service added with `smarthome_iam` database, all services wired with `IAM_ISSUER` env and `iam-service` dependency.
+
+---
+
+## ✅ Done — Phase 3B: Device Registry & History Service Security
+
+Both data services secured as OAuth2 resource servers with RBAC.
+
+- **device-registry-service** — `SecurityConfig` with RBAC: `GET` endpoints accessible to any authenticated role (`ADMIN`, `OPERATOR`, `VIEWER`); `POST` restricted to `ADMIN`/`OPERATOR`; `PUT`/`DELETE`/decommission restricted to `ADMIN` only. All 8 `RegistrySecurityTest` tests pass.
+- **history-service** — `SecurityConfig` with RBAC: `GET` endpoints accessible to any authenticated role. All 3 `HistorySecurityTest` tests pass.
+- **docker-compose** — `IAM_ISSUER` env var and `iam-service` dependency added for both services.
+
+---
+
+## ✅ Done — Phase 3.4/3.5: Notification Service
+
+New `notification-service` module replaces alert handling previously in `processing-service`.
+
+- **Module** — Spring Boot service on port 8086, consuming from `alerts.queue` via RabbitMQ.
+- **JPA entities** — `NotificationPreference` (per-user delivery channel preferences with severity threshold filtering, quiet hours, sensor filters) and `NotificationRecord` (audit log of all dispatched notifications with delivery status tracking).
+- **Channel abstraction** — `NotificationChannel` interface with `EmailChannel`, `SmsChannel`, and `WebhookChannel` stub implementations (log-only; ready for SendGrid/Twilio/HTTP integration).
+- **`AlertNotificationService`** — core dispatch logic: sliding-window deduplication by `(sensorId, sensorType, severity)`, severity threshold filtering per user preference, multi-user fan-out across configured channels.
+- **REST API** — `/api/notifications/history/**` (query notification records) and `/api/notifications/preferences/**` (full CRUD for per-user notification preferences).
+- **Security** — Secured as OAuth2 resource server with RBAC via `JwtAuthConverterFactory`.
+- **Alert migration** — `AlertListener` and `AlertHandlerService` removed from `processing-service`; notification-service now owns `alerts.queue`.
+- **Infrastructure** — Dockerfile, docker-compose wiring (RabbitMQ, TimescaleDB, IAM dependencies), and `notifications` database added to TimescaleDB init script.
+
+---
+
 ## ⏳ Left to do
 
-### Phase 3 — Security & Notifications (next milestone)
-- IAM Service (Spring Authorization Server, OAuth 2.1/JWT); secure REST APIs as resource servers.
-- RabbitMQ TLS + mTLS between services.
-- Notification Service (email/SMS/push/webhook); move alert handling out of `processing-service`.
-- Spring Cloud Gateway as the edge.
+### Phase 3 — remaining items
+- **3C: Secure RabbitMQ** — TLS on broker, per-service credentials with topic permissions, credential rotation via Vault.
+- **3.6: Spring Cloud Gateway** — single entry point for all REST traffic; JWT validation, rate limiting, request logging.
+- **3.7: mTLS** — mutual TLS for internal service-to-service REST calls.
 
 ### Phase 4 — Kubernetes & CI/CD
 - Helm charts; RabbitMQ operator; TimescaleDB chart; observability stack.
 - Vault for secrets; CI/CD pipeline; Istio (optional); load testing.
 
 ### Also pending (from the plan, not yet started)
-- **Frontend dashboard** — `production_plan.md` calls for a React/Next.js (or Vite) dashboard: real-time monitoring (SSE/WebSocket from `processing-service`), historical analytics (TimescaleDB), device management UI, alert center, JWT auth via IAM, routed through Spring Cloud Gateway. A streaming endpoint still needs to be added to `processing-service`. Likely lives in a new `dashboard/` dir outside the Maven reactor. Depends on Phase 2/3 backend work.
+- **Frontend dashboard** — `production_plan.md` calls for a React/Next.js (or Vite) dashboard: real-time monitoring (SSE/WebSocket from `processing-service`), historical analytics (TimescaleDB), device management UI, alert center, JWT auth via IAM, routed through Spring Cloud Gateway. A streaming endpoint still needs to be added to `processing-service`. Likely lives in a new `dashboard/` dir outside the Maven reactor. Depends on Phase 3 backend work completion.
 
 ---
 
@@ -74,7 +109,10 @@ All sub-tasks complete; full reactor builds green across **7 modules**.
 - **Fan-out persistence (Phase 2):** history-service binds its *own* queue (`telemetry.persistence.queue`) to the topic exchange on `data.processed`, so it persists every event independently of processing-service's analytics — it is **not** a competing consumer on `processed.data.queue`. This deviates from the original plan wording; `production_plan.md` has been updated to match.
 - **Two-bean registry client (Phase 2):** the gateway splits the device lookup across `DeviceRegistryGateway` (`@CircuitBreaker`/`@Retry`) and `DeviceRegistryClient` (`@Cacheable`) for the same AOP-proxy reason as `OutboundPublisher`.
 - **Append-only hypertable:** `SensorReadingEntity` implements `Persistable` (`isNew()` always `true`) so Hibernate always issues INSERTs against the TimescaleDB hypertable (no SELECT-before-INSERT).
+- **JWT role mapping (Phase 3A):** IAM puts roles in a custom `roles` claim (not standard `scope`/`scp`). The shared `JwtAuthConverterFactory` in `iot-common` maps these to `ROLE_*` authorities so `hasRole(...)` works consistently across all resource servers.
+- **Notification dedup (Phase 3.4):** sliding-window dedup by `(sensorId, sensorType, severity)` tuple prevents alert storms from flooding notification channels. Cooldown period is configurable.
 
 ## Reference docs
 - `production_plan.md` — authoritative 4-phase roadmap.
 - `ARCHITECTURE_WALKTHROUGH.md`, `SERVICE_GUIDE.md` — design + per-service deep dives.
+- `AUTH_IMPLEMENTATION.md` — Phase 3A IAM and security implementation details.

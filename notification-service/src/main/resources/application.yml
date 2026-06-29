@@ -1,36 +1,25 @@
 # =============================================================================
-# History / Persistence Service Configuration (Phase 2)
+# Notification Service Configuration
 # =============================================================================
-# Consumes every processed.data event on its own queue and persists readings to
-# the TimescaleDB sensor_readings hypertable. Serves historical queries.
-# =============================================================================
-
 server:
-  port: 8085
+  port: 8086
 
 spring:
   application:
-    name: history-service
+    name: notification-service
 
-  # ---------------------------------------------------------------------------
-  # Time-series store: the "telemetry" database on the shared TimescaleDB.
-  # The hypertable is created by the DB init scripts, so ddl-auto stays "none".
-  # ---------------------------------------------------------------------------
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:telemetry}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:notifications}
     username: ${DB_USERNAME:smarthome}
     password: ${DB_PASSWORD:smarthome123}
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: false
     open-in-view: false
 
-  # ---------------------------------------------------------------------------
-  # RabbitMQ: processed-data consumer
-  # ---------------------------------------------------------------------------
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
@@ -39,10 +28,7 @@ spring:
     virtual-host: ${RABBITMQ_VHOST:/}
     listener:
       simple:
-        concurrency: 1
-        max-concurrency: 5
         acknowledge-mode: auto
-        prefetch: 20
         retry:
           enabled: true
           initial-interval: 1s
@@ -51,8 +37,8 @@ spring:
           multiplier: 2.0
 
   # ---------------------------------------------------------------------------
-  # Security: OAuth2 resource server (Phase 3B). Validates IAM-issued RS256 JWTs
-  # locally via JWKS (lazy fetch on first token, so no startup coupling to IAM).
+  # Security: OAuth2 resource server. Validates IAM-issued RS256 JWTs locally
+  # via JWKS (lazy fetch on first token, so no startup coupling to IAM).
   # ---------------------------------------------------------------------------
   security:
     oauth2:
@@ -62,7 +48,7 @@ spring:
           jwk-set-uri: ${IAM_ISSUER:http://localhost:9000}/oauth2/jwks
 
 # =============================================================================
-# Management / Observability (Actuator + Prometheus + Tracing)
+# Actuator / Observability
 # =============================================================================
 management:
   endpoints:
@@ -83,12 +69,19 @@ management:
       endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
 
 # =============================================================================
+# Notification behavior
+# =============================================================================
+notification:
+  dedup:
+    window-seconds: ${NOTIFICATION_DEDUP_WINDOW:300}
+
+# =============================================================================
 # Logging Configuration
 # =============================================================================
 logging:
   level:
     root: INFO
-    com.smarthome.history: DEBUG
+    com.smarthome.notification: DEBUG
     org.springframework.amqp: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

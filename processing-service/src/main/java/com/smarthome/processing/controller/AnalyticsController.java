@@ -1,8 +1,6 @@
 package com.smarthome.processing.controller;
 
-import com.smarthome.common.event.AlertEvent;
 import com.smarthome.processing.model.SensorStatistics;
-import com.smarthome.processing.service.AlertHandlerService;
 import com.smarthome.processing.service.AnalyticsService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -36,11 +33,9 @@ public class AnalyticsController {
     private static final Logger log = LoggerFactory.getLogger(AnalyticsController.class);
 
     private final AnalyticsService analyticsService;
-    private final AlertHandlerService alertHandlerService;
 
-    public AnalyticsController(AnalyticsService analyticsService, AlertHandlerService alertHandlerService) {
+    public AnalyticsController(AnalyticsService analyticsService) {
         this.analyticsService = analyticsService;
-        this.alertHandlerService = alertHandlerService;
     }
 
     /**
@@ -71,20 +66,6 @@ public class AnalyticsController {
     }
 
     /**
-     * Get recent alerts.
-     * 
-     * @param limit Maximum number of alerts to return (default: 50)
-     * @return List of recent alerts
-     */
-    @GetMapping("/alerts")
-    public ResponseEntity<List<AlertEvent>> getRecentAlerts(
-            @RequestParam(defaultValue = "50") int limit) {
-        log.debug("Request received: GET /api/analytics/alerts?limit={}", limit);
-        List<AlertEvent> alerts = alertHandlerService.getRecentAlerts(limit);
-        return ResponseEntity.ok(alerts);
-    }
-
-    /**
      * Health check endpoint.
      * Returns system health and basic metrics.
      * 
@@ -107,7 +88,6 @@ public class AnalyticsController {
         Map<String, Object> metrics = new HashMap<>();
         metrics.put("sensorsTracked", analyticsService.getSensorCount());
         metrics.put("totalReadingsProcessed", analyticsService.getTotalReadingsProcessed());
-        metrics.put("recentAlertsCount", alertHandlerService.getAlertCount());
         health.put("metrics", metrics);
         
         return ResponseEntity.ok(health);
@@ -125,7 +105,6 @@ public class AnalyticsController {
         
         summary.put("sensorsTracked", analyticsService.getSensorCount());
         summary.put("totalReadingsProcessed", analyticsService.getTotalReadingsProcessed());
-        summary.put("alertsCount", alertHandlerService.getAlertCount());
         summary.put("statistics", analyticsService.getAllStatistics());
         summary.put("generatedAt", Instant.now().toString());
         

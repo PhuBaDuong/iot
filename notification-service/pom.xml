@@ -10,25 +10,24 @@
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
-    <artifactId>history-service</artifactId>
-    <packaging>jar</packaging>
-
-    <name>History Service</name>
-    <description>
-        Persistence / History Service for IoT Smart Home Monitor (Phase 2).
-        Consumes every processed.data event (its own queue fanned out from the
-        topic exchange) and durably stores readings in the TimescaleDB
-        sensor_readings hypertable. Exposes a /api/history query API.
-    </description>
+    <artifactId>notification-service</artifactId>
+    <name>Notification Service</name>
+    <description>IoT Notification Service - Consumes alerts and delivers notifications with configurable preferences</description>
 
     <dependencies>
-        <!-- REST API -->
+        <!-- Spring Boot Web for REST APIs -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- Time-series persistence (telemetry database on TimescaleDB) -->
+        <!-- Bean validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- Relational persistence (notification preferences + history in Postgres) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -39,7 +38,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- RabbitMQ: processed-data consumer -->
+        <!-- Spring Boot AMQP for RabbitMQ integration (alerts.queue consumer) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
@@ -72,14 +71,7 @@
             <artifactId>logstash-logback-encoder</artifactId>
         </dependency>
 
-        <!-- Shared DTOs, events, and constants -->
-        <dependency>
-            <groupId>com.smarthome</groupId>
-            <artifactId>iot-common</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <!-- Security: OAuth2 resource server (Phase 3B) -->
+        <!-- Security: OAuth2 resource server (validates IAM-issued JWTs via JWKS) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
@@ -87,6 +79,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+
+        <!-- IoT Common library for shared DTOs, events, and constants -->
+        <dependency>
+            <groupId>com.smarthome</groupId>
+            <artifactId>iot-common</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <!-- Test dependencies -->
@@ -98,6 +97,17 @@
         <dependency>
             <groupId>org.springframework.amqp</groupId>
             <artifactId>spring-rabbit-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Boot 4 split the MVC test slice (@WebMvcTest) into its own module -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -115,16 +125,6 @@
             <artifactId>rabbitmq</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
     <build>
@@ -135,4 +135,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>
