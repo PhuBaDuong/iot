@@ -1,0 +1,18 @@
+IoT Smart Home has been deployed to namespace {{ .Release.Namespace }}.
+
+Services:
+  api-gateway:          {{ .Release.Name }}-api-gateway:8080
+  sensor-simulator:     {{ .Release.Name }}-sensor-simulator:8081
+  gateway-service:      {{ .Release.Name }}-gateway-service:8082
+  processing-service:   {{ .Release.Name }}-processing-service:8083
+  device-registry:      {{ .Release.Name }}-device-registry:8084
+  history-service:      {{ .Release.Name }}-history-service:8085
+  iam-service:          {{ .Release.Name }}-iam-service:9000
+  notification-service: {{ .Release.Name }}-notification-service:8086
+
+{{- if (index .Values "api-gateway").ingress.enabled }}
+Ingress:
+  {{- range (index .Values "api-gateway").ingress.hosts }}
+  http://{{ .host }}
+  {{- end }}
+{{- end }}

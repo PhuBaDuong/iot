@@ -29,14 +29,20 @@ COPY iot-common/src iot-common/src
 COPY processing-service/src processing-service/src
 RUN mvn -B -q -pl processing-service -am -DskipTests package
 
-# ---- Runtime stage: minimal JRE 25 ----
-FROM eclipse-temurin:25-jre
-WORKDIR /app
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && useradd -r -u 1001 spring
+# ---- Extract stage: Spring Boot layer tools ----
+FROM eclipse-temurin:25-jre AS extract
+WORKDIR /extract
 COPY --from=build /workspace/processing-service/target/processing-service-*.jar app.jar
+RUN java -Djarmode=tools -jar app.jar extract --layers --destination extracted
+
+# ---- Runtime stage: layered JRE 25 Alpine ----
+FROM eclipse-temurin:25-jre-alpine
+WORKDIR /app
+RUN addgroup -S spring && adduser -S -G spring -u 1001 spring
+COPY --from=extract /extract/extracted/dependencies/ ./
+COPY --from=extract /extract/extracted/spring-boot-loader/ ./
+COPY --from=extract /extract/extracted/snapshot-dependencies/ ./
+COPY --from=extract /extract/extracted/application/ ./
 USER spring
 EXPOSE 8083
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

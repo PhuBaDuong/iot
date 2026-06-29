@@ -1,0 +1,123 @@
+# =============================================================================
+# IoT Smart Home — default (development) values
+# =============================================================================
+# Each top-level key is the alias from Chart.yaml and overrides the
+# spring-service sub-chart values for that microservice.
+# =============================================================================
+
+global:
+  imageRegistry: ghcr.io/iot-smarthome
+
+api-gateway:
+  image:
+    repository: ghcr.io/iot-smarthome/api-gateway
+    tag: latest
+  service:
+    port: 8080
+    containerPort: 8080
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: smarthome.local
+        paths:
+          - path: /
+            pathType: Prefix
+  env:
+    IAM_URI: http://smarthome-iam-service:9000
+    SIMULATOR_URI: http://smarthome-sensor-simulator:8081
+    GATEWAY_URI: http://smarthome-gateway-service:8082
+    PROCESSING_URI: http://smarthome-processing-service:8083
+    REGISTRY_URI: http://smarthome-device-registry:8084
+    HISTORY_URI: http://smarthome-history-service:8085
+    NOTIFICATION_URI: http://smarthome-notification-service:8086
+    REDIS_HOST: redis-master
+    IAM_ISSUER: http://smarthome-iam-service:9000
+
+sensor-simulator:
+  image:
+    repository: ghcr.io/iot-smarthome/sensor-simulator
+    tag: latest
+  service:
+    port: 8081
+    containerPort: 8081
+  env:
+    RABBITMQ_HOST: rabbitmq
+    DEVICE_REGISTRY_URL: http://smarthome-device-registry:8084
+    IAM_ISSUER: http://smarthome-iam-service:9000
+
+gateway-service:
+  image:
+    repository: ghcr.io/iot-smarthome/gateway-service
+    tag: latest
+  service:
+    port: 8082
+    containerPort: 8082
+  env:
+    RABBITMQ_HOST: rabbitmq
+    REDIS_HOST: redis-master
+    DEVICE_REGISTRY_URL: http://smarthome-device-registry:8084
+    IAM_ISSUER: http://smarthome-iam-service:9000
+
+processing-service:
+  image:
+    repository: ghcr.io/iot-smarthome/processing-service
+    tag: latest
+  service:
+    port: 8083
+    containerPort: 8083
+  env:
+    RABBITMQ_HOST: rabbitmq
+    IAM_ISSUER: http://smarthome-iam-service:9000
+
+device-registry:
+  image:
+    repository: ghcr.io/iot-smarthome/device-registry
+    tag: latest
+  service:
+    port: 8084
+    containerPort: 8084
+  env:
+    RABBITMQ_HOST: rabbitmq
+    REDIS_HOST: redis-master
+    DB_HOST: timescaledb
+    DB_NAME: devices
+    IAM_ISSUER: http://smarthome-iam-service:9000
+
+history-service:
+  image:
+    repository: ghcr.io/iot-smarthome/history-service
+    tag: latest
+  service:
+    port: 8085
+    containerPort: 8085
+  env:
+    RABBITMQ_HOST: rabbitmq
+    DB_HOST: timescaledb
+    DB_NAME: telemetry
+    IAM_ISSUER: http://smarthome-iam-service:9000
+
+iam-service:
+  image:
+    repository: ghcr.io/iot-smarthome/iam-service
+    tag: latest
+  service:
+    port: 9000
+    containerPort: 9000
+  env:
+    DB_HOST: timescaledb
+    DB_NAME: smarthome_iam
+    IAM_ISSUER: http://smarthome-iam-service:9000
+
+notification-service:
+  image:
+    repository: ghcr.io/iot-smarthome/notification-service
+    tag: latest
+  service:
+    port: 8086
+    containerPort: 8086
+  env:
+    RABBITMQ_HOST: rabbitmq
+    DB_HOST: timescaledb
+    DB_NAME: notifications
+    IAM_ISSUER: http://smarthome-iam-service:9000

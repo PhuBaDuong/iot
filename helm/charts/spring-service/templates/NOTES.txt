@@ -1,0 +1,11 @@
+{{ include "spring-service.fullname" . }} has been deployed.
+
+  Service: {{ include "spring-service.fullname" . }}:{{ .Values.service.port }}
+  Health:  http://{{ include "spring-service.fullname" . }}:{{ .Values.service.port }}/actuator/health
+
+{{- if .Values.ingress.enabled }}
+  Ingress:
+  {{- range .Values.ingress.hosts }}
+    http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}
+  {{- end }}
+{{- end }}

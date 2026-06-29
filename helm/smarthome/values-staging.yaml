@@ -1,0 +1,37 @@
+# =============================================================================
+# Staging overrides
+# =============================================================================
+
+api-gateway:
+  replicaCount: 1
+  ingress:
+    hosts:
+      - host: staging.smarthome.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: staging-tls
+        hosts:
+          - staging.smarthome.example.com
+
+sensor-simulator:
+  replicaCount: 1
+
+gateway-service:
+  replicaCount: 1
+
+processing-service:
+  replicaCount: 1
+
+device-registry:
+  replicaCount: 1
+
+history-service:
+  replicaCount: 1
+
+iam-service:
+  replicaCount: 1
+
+notification-service:
+  replicaCount: 1
