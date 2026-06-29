@@ -33,5 +33,17 @@ bin/
 ### Mac OS ###
 .DS_Store
 
+<<<<<<< HEAD
 ### Maven/Gradle build ###
 **/target/
+=======
+### Build output ###
+target/
+
+# TLS certificates (generated, not committed)
+certs/*.pem
+certs/*.p12
+certs/*.csr
+certs/*.srl
+certs/*.cnf
+>>>>>>> 04ea624 (mTSL to rabbitmq)

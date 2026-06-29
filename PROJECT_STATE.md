@@ -1,7 +1,7 @@
 # IoT Smart Home Monitor — Project State
 
 **Last updated:** 2026-06-25
-**Status:** Phases 1, 2, 3A, and 3B complete; Notification Service built and alert handling migrated. Full Maven reactor (8 modules) builds green; all unit/security tests pass (26 tests across 6 security test classes) and Docker-dependent integration tests skip cleanly when no daemon is present.
+**Status:** Phases 1, 2, 3A, 3B, 3C, and 3.4/3.5 complete; RabbitMQ secured with TLS and per-service credentials. Full Maven reactor (8 modules) builds green; all unit/security tests pass (26 tests across 6 security test classes) and Docker-dependent integration tests skip cleanly when no daemon is present.
 
 ---
 
@@ -16,7 +16,7 @@ A microservices-based IoT monitoring system that ingests synthetic sensor teleme
 | Security | Spring Security 7.1 (Authorization Server is a core component) |
 | Cloud / resilience | Spring Cloud 2025.1.2 (Oakwood) — Resilience4j circuit breakers/retry |
 | Build | Maven multi-module reactor (`./mvnw`) |
-| Messaging | RabbitMQ (topic exchange + per-queue DLQ) |
+| Messaging | RabbitMQ 3.13 (TLS on 5671, topic exchange + per-queue DLQ, per-service credentials) |
 | Cache / fast state | Redis (dedup, rate-limit, thresholds, device-status cache, pub/sub) |
 | Time-series store | TimescaleDB (Postgres 16) |
 | Relational store | Postgres (device registry + IAM, same TimescaleDB instance) |
@@ -52,7 +52,7 @@ The project follows `production_plan.md` (with `auth_plan.md` driving Phase 3).
 - ✅ **Phase 3A — IAM Service & Resource-Server Security:** Spring Authorization Server, shared JWT role converter, three resource servers hardened (gateway, processing, simulator), Docker/Prometheus wiring, security tests.
 - ✅ **Phase 3B — Secure remaining services:** `device-registry-service` and `history-service` hardened as OAuth2 resource servers with RBAC; docker-compose wired with `IAM_ISSUER` and `iam-service` dependency; security tests (RegistrySecurityTest 8/8, HistorySecurityTest 3/3).
 - ✅ **Phase 3.4/3.5 — Notification Service & Alert Migration:** New `notification-service` module (port 8086) consuming `alerts.queue`; JPA entities for preferences and notification records; channel abstraction (email/SMS/webhook stubs); dedup and severity filtering; REST API for history and preferences; alert handling removed from `processing-service` (`AlertListener` + `AlertHandlerService` deleted).
-- ⏳ **Phase 3C — RabbitMQ TLS/mTLS + HMAC message signing:** not started.
+- ✅ **Phase 3C — Secure RabbitMQ:** RabbitMQ 3.13 with TLS on port 5671 (TLSv1.2/1.3); self-signed CA + server cert via `certs/generate-certs.sh`; PKCS12 truststore for Spring Boot clients. 7 users in `rabbitmq/definitions.json` (admin + 6 least-privilege service accounts). Full topology pre-declared in definitions (exchanges, queues, bindings, DLX args). All 6 services have `spring.rabbitmq.ssl.*` config (defaults `false` for local dev; Docker Compose sets `true` on port 5671). Credential rotation via Vault deferred to Phase 4.
 - ⏳ **Phase 3.6 — Spring Cloud Gateway:** edge proxy not started.
 - ⏳ **Phase 3.7 — mTLS:** internal service-to-service mTLS not started.
 
@@ -64,7 +64,7 @@ One stack brings up all backing services plus the eight app services. Internal h
 
 | Service | Image | Host port(s) | Notes |
 |---|---|---|---|
-| rabbitmq | `rabbitmq:3.12-management` | 5672, 15672 | user/pass `smarthome` / `smarthome123` |
+| rabbitmq | `rabbitmq:3.13-management` | 5672, 5671, 15672 | TLS on 5671; 7 users via `definitions.json`; admin/admin-secret for Management UI |
 | redis | `redis:7-alpine` | 6379 | dedup / rate-limit / thresholds / cache |
 | timescaledb | `timescale/timescaledb:2.17.2-pg16` | 5432 | hosts `telemetry`, `devices`, `smarthome_iam`, `notifications` DBs |
 | zipkin | `openzipkin/zipkin:latest` | 9411 | trace collector |
@@ -78,7 +78,7 @@ One stack brings up all backing services plus the eight app services. Internal h
 | notification-service | built | 8086 | RabbitMQ, DB `notifications`, `IAM_ISSUER` |
 | sensor-simulator-service | built | 8081 | RabbitMQ, `DEVICE_REGISTRY_URL`, `IAM_ISSUER` |
 
-**Common env wiring:** `RABBITMQ_HOST/PORT/USERNAME/PASSWORD`, `REDIS_HOST/PORT`, `DB_HOST/PORT/NAME/USERNAME/PASSWORD`, `IAM_ISSUER`, `ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans`. All app services expose `/actuator/health` healthchecks with a 60s start period. All resource servers depend on `iam-service: condition: service_healthy`. Named volumes persist RabbitMQ, Redis, TimescaleDB, Prometheus, and Grafana data.
+**Common env wiring:** `RABBITMQ_HOST/PORT/USERNAME/PASSWORD`, `RABBITMQ_SSL_ENABLED/TRUSTSTORE/TRUSTSTORE_PASSWORD` (Phase 3C), `REDIS_HOST/PORT`, `DB_HOST/PORT/NAME/USERNAME/PASSWORD`, `IAM_ISSUER`, `ZIPKIN_ENDPOINT=http://zipkin:9411/api/v2/spans`. Each RabbitMQ-using service has its own per-service credentials and mounts `./certs:/certs:ro` for TLS. All app services expose `/actuator/health` healthchecks with a 60s start period. All resource servers depend on `iam-service: condition: service_healthy`. Named volumes persist RabbitMQ, Redis, TimescaleDB, Prometheus, and Grafana data.
 
 ---
 
@@ -117,7 +117,7 @@ Init scripts in `db/timescaledb/init/` (`01-create-databases.sql`, `02-telemetry
 
 ## 6. RabbitMQ Topology
 
-All names are centralized in `iot-common` `RabbitMQConstants`.
+All names are centralized in `iot-common` `RabbitMQConstants`. Full topology is also pre-declared in `rabbitmq/definitions.json` (imported on broker startup), so exchanges, queues, bindings, and users exist before any service connects.
 
 **Exchanges:** `sensor.exchange` (topic, primary bus), `alerts.exchange` (topic), `dlx.exchange` (direct, dead-letters).
 
@@ -134,6 +134,17 @@ All names are centralized in `iot-common` `RabbitMQConstants`.
 **Routing keys:** readings published as `sensor.{type}.{location}` (matches `sensor.#`); heartbeats as `device.heartbeat` (deliberately does NOT match `sensor.#`); processed data `data.processed`; alerts `alert.anomaly`.
 
 **Dead-letter topology:** each main queue declares `x-dead-letter-exchange=dlx.exchange` with a dedicated DLQ — `sensor.readings.dlq`, `processed.data.dlq`, `alerts.dlq`, `device.heartbeat.dlq`, `telemetry.persistence.dlq`. `sensor.readings.queue` also has a 5-minute (`300000` ms) message TTL. Gateway's `DlqMonitorService` exposes DLQ depth as a Prometheus gauge.
+
+**Per-service credentials (Phase 3C):** 7 users defined in `rabbitmq/definitions.json` with least-privilege permissions:
+| User | Write | Read |
+|---|---|---|
+| `admin` | `.*` | `.*` |
+| `gateway-svc` | `sensor.exchange`, `dlx.exchange` | `sensor.readings.queue`, `sensor.readings.dlq` |
+| `processing-svc` | `dlx.exchange` | `processed.data.queue`, `processed.data.dlq` |
+| `registry-svc` | `dlx.exchange` | `device.heartbeat.queue`, `device.heartbeat.dlq` |
+| `history-svc` | `dlx.exchange` | `telemetry.persistence.queue`, `telemetry.persistence.dlq` |
+| `notification-svc` | `dlx.exchange` | `alerts.queue`, `alerts.dlq` |
+| `simulator-svc` | `sensor.exchange` | (none) |
 
 ---
 
@@ -226,10 +237,9 @@ Useful endpoints once up: RabbitMQ UI `:15672`, Prometheus `:9090`, Grafana `:30
 
 ## 13. Next Steps (pending)
 
-1. **Phase 3C** — RabbitMQ TLS/mTLS + per-service credentials with topic permissions.
-2. **Phase 3.6** — Spring Cloud Gateway as edge proxy (JWT validation, rate limiting, request logging).
-3. **Phase 3.7** — mTLS for internal service-to-service communication.
-4. **Phase 4** — Production Hardening (Kubernetes/Helm, Vault secrets, CI/CD, load testing).
+1. **Phase 3.6** — Spring Cloud Gateway as edge proxy (JWT validation, rate limiting, request logging).
+2. **Phase 3.7** — mTLS for internal service-to-service communication.
+3. **Phase 4** — Production Hardening (Kubernetes/Helm, Vault secrets, CI/CD, load testing).
 
 ---
 

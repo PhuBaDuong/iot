@@ -18,20 +18,24 @@ services:
   # 4. Flexible routing with exchanges and queues
   # ---------------------------------------------------------------------------
   rabbitmq:
-    image: rabbitmq:3.12-management
+    image: rabbitmq:3.13-management
     container_name: smarthome-rabbitmq
     ports:
-      # AMQP protocol port - used by our Spring Boot services
+      # AMQP protocol port - used by our Spring Boot services (plain, local dev)
       - "5672:5672"
-      # Management UI - access at http://localhost:15672
-      # Default credentials: guest/guest
+      # AMQPS (TLS) - used by services in Docker Compose
+      - "5671:5671"
+      # Management UI - access at http://localhost:15672 (admin/admin-secret)
       - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: smarthome
-      RABBITMQ_DEFAULT_PASS: smarthome123
     volumes:
       # Persist messages across container restarts
       - rabbitmq_data:/var/lib/rabbitmq
+      # TLS certificates
+      - ./certs:/certs:ro
+      # Custom configuration
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins:ro
+      - ./rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 30s
@@ -127,14 +131,19 @@ services:
       - "8082:8082"
     environment:
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: smarthome
-      RABBITMQ_PASSWORD: smarthome123
+      RABBITMQ_PORT: 5671
+      RABBITMQ_USERNAME: gateway-svc
+      RABBITMQ_PASSWORD: gw-secret-2024
+      RABBITMQ_SSL_ENABLED: "true"
+      RABBITMQ_TRUSTSTORE: file:/certs/ca-truststore.p12
+      RABBITMQ_TRUSTSTORE_PASSWORD: changeit
       REDIS_HOST: redis
       REDIS_PORT: 6379
       DEVICE_REGISTRY_URL: http://device-registry-service:8084
       IAM_ISSUER: http://iam-service:9000
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    volumes:
+      - ./certs:/certs:ro
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -165,11 +174,16 @@ services:
       - "8083:8083"
     environment:
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: smarthome
-      RABBITMQ_PASSWORD: smarthome123
+      RABBITMQ_PORT: 5671
+      RABBITMQ_USERNAME: processing-svc
+      RABBITMQ_PASSWORD: proc-secret-2024
+      RABBITMQ_SSL_ENABLED: "true"
+      RABBITMQ_TRUSTSTORE: file:/certs/ca-truststore.p12
+      RABBITMQ_TRUSTSTORE_PASSWORD: changeit
       IAM_ISSUER: http://iam-service:9000
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    volumes:
+      - ./certs:/certs:ro
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -196,9 +210,12 @@ services:
       - "8084:8084"
     environment:
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: smarthome
-      RABBITMQ_PASSWORD: smarthome123
+      RABBITMQ_PORT: 5671
+      RABBITMQ_USERNAME: registry-svc
+      RABBITMQ_PASSWORD: reg-secret-2024
+      RABBITMQ_SSL_ENABLED: "true"
+      RABBITMQ_TRUSTSTORE: file:/certs/ca-truststore.p12
+      RABBITMQ_TRUSTSTORE_PASSWORD: changeit
       REDIS_HOST: redis
       REDIS_PORT: 6379
       DB_HOST: timescaledb
@@ -208,6 +225,8 @@ services:
       DB_PASSWORD: smarthome123
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
       IAM_ISSUER: http://iam-service:9000
+    volumes:
+      - ./certs:/certs:ro
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -238,9 +257,12 @@ services:
       - "8085:8085"
     environment:
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: smarthome
-      RABBITMQ_PASSWORD: smarthome123
+      RABBITMQ_PORT: 5671
+      RABBITMQ_USERNAME: history-svc
+      RABBITMQ_PASSWORD: hist-secret-2024
+      RABBITMQ_SSL_ENABLED: "true"
+      RABBITMQ_TRUSTSTORE: file:/certs/ca-truststore.p12
+      RABBITMQ_TRUSTSTORE_PASSWORD: changeit
       DB_HOST: timescaledb
       DB_PORT: 5432
       DB_NAME: telemetry
@@ -248,6 +270,8 @@ services:
       DB_PASSWORD: smarthome123
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
       IAM_ISSUER: http://iam-service:9000
+    volumes:
+      - ./certs:/certs:ro
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -276,9 +300,12 @@ services:
       - "8086:8086"
     environment:
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: smarthome
-      RABBITMQ_PASSWORD: smarthome123
+      RABBITMQ_PORT: 5671
+      RABBITMQ_USERNAME: notification-svc
+      RABBITMQ_PASSWORD: notif-secret-2024
+      RABBITMQ_SSL_ENABLED: "true"
+      RABBITMQ_TRUSTSTORE: file:/certs/ca-truststore.p12
+      RABBITMQ_TRUSTSTORE_PASSWORD: changeit
       DB_HOST: timescaledb
       DB_PORT: 5432
       DB_NAME: notifications
@@ -286,6 +313,8 @@ services:
       DB_PASSWORD: smarthome123
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
       IAM_ISSUER: http://iam-service:9000
+    volumes:
+      - ./certs:/certs:ro
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -346,12 +375,17 @@ services:
       - "8081:8081"
     environment:
       RABBITMQ_HOST: rabbitmq
-      RABBITMQ_PORT: 5672
-      RABBITMQ_USERNAME: smarthome
-      RABBITMQ_PASSWORD: smarthome123
+      RABBITMQ_PORT: 5671
+      RABBITMQ_USERNAME: simulator-svc
+      RABBITMQ_PASSWORD: sim-secret-2024
+      RABBITMQ_SSL_ENABLED: "true"
+      RABBITMQ_TRUSTSTORE: file:/certs/ca-truststore.p12
+      RABBITMQ_TRUSTSTORE_PASSWORD: changeit
       DEVICE_REGISTRY_URL: http://device-registry-service:8084
       IAM_ISSUER: http://iam-service:9000
       ZIPKIN_ENDPOINT: http://zipkin:9411/api/v2/spans
+    volumes:
+      - ./certs:/certs:ro
     depends_on:
       rabbitmq:
         condition: service_healthy

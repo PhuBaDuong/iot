@@ -31,6 +31,12 @@ spring:
     username: ${RABBITMQ_USERNAME:smarthome}
     password: ${RABBITMQ_PASSWORD:smarthome123}
     virtual-host: ${RABBITMQ_VHOST:/}
+    ssl:
+      enabled: ${RABBITMQ_SSL_ENABLED:false}
+      trust-store: ${RABBITMQ_TRUSTSTORE:}
+      trust-store-password: ${RABBITMQ_TRUSTSTORE_PASSWORD:}
+      trust-store-type: PKCS12
+      algorithm: TLSv1.3
     connection-timeout: 10s
     # Publisher confirms/returns detect broker-side delivery failures.
     publisher-confirm-type: correlated
