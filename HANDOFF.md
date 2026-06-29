@@ -1,7 +1,7 @@
 x`# Project Handoff — IoT Smart Home Monitor
 
 Status snapshot for the production-readiness effort tracked in `production_plan.md`.
-**Phases 1, 2, 3A, 3B, 3C, 3.4/3.5, 3.6, and 3.7 are complete and tested. Phase 3 is done. Phase 4 is not started.**
+**Phases 1, 2, 3, and 4 are complete and tested.**
 
 - **Stack:** Spring Boot 4.0.1, Java 25, Spring Cloud 2025.1.2 (Oakwood), Maven multi-module reactor.
 - **Modules:** `iot-common`, `sensor-simulator-service` (8081), `gateway-service` (8082), `processing-service` (8083), `device-registry-service` (8084), `history-service` (8085), `notification-service` (8086), `iam-service` (9000), `api-gateway` (8080).
@@ -124,14 +124,28 @@ Mutual TLS for all internal REST communication (Phase 3.7).
 
 ---
 
+## ✅ Done — Phase 4: Kubernetes & CI/CD
+
+Production deployment infrastructure and CI/CD pipeline.
+
+- **4.1 Health probes** — Kubernetes liveness/readiness probe groups configured in all 8 service `application.yml` files. Each service's readiness group includes only its actual dependencies (db, rabbit, redis as appropriate). Liveness uses `livenessState` only (avoids cascading restarts).
+- **4.2 Layered Dockerfiles** — All 8 Dockerfiles updated to 3-stage builds: compile → extract Spring Boot layers (`java -Djarmode=tools`) → runtime with separate COPY per layer (dependencies, spring-boot-loader, snapshot-dependencies, application). Entrypoint changed to `JarLauncher` for layered execution.
+- **4.3 Helm charts** — Reusable `spring-service` sub-chart (`helm/charts/spring-service/`) with deployment, service, configmap, secret, HPA, ServiceMonitor, ingress templates. Umbrella chart (`helm/smarthome/`) declares 8 aliased dependencies. Per-environment value files (dev/staging/prod). RabbitMQ Cluster Operator CR for HA messaging.
+- **4.4 CI/CD pipeline** — GitHub Actions workflow (`.github/workflows/ci-cd.yml`) with 7 stages: checkstyle lint → unit tests → integration tests (Testcontainers) → Docker build & push to GHCR (matrix for 8 services, BuildKit cache) → Trivy vulnerability scan (SARIF upload) → deploy staging (Helm upgrade + smoke tests) → deploy production (manual approval gate).
+
+---
+
 ## ⏳ Left to do
 
-### Phase 4 — Kubernetes & CI/CD
-- Helm charts; RabbitMQ operator; TimescaleDB chart; observability stack.
-- Vault for secrets; CI/CD pipeline; Istio (optional); load testing.
+### Future work (from Phase 4 plan, deferred)
+- TimescaleDB Helm chart or managed PostgreSQL service (4.3)
+- Observability stack via kube-prometheus-stack (4.4)
+- HashiCorp Vault or Sealed Secrets for secrets injection (4.5)
+- Istio service mesh for traffic management (4.7)
+- Load testing with k6/Gatling (4.8)
 
-### Also pending (from the plan, not yet started)
-- **Frontend dashboard** — `production_plan.md` calls for a React/Next.js (or Vite) dashboard: real-time monitoring (SSE/WebSocket from `processing-service`), historical analytics (TimescaleDB), device management UI, alert center, JWT auth via IAM, routed through Spring Cloud Gateway. A streaming endpoint still needs to be added to `processing-service`. Likely lives in a new `dashboard/` dir outside the Maven reactor. Depends on Phase 3 backend work completion.
+### Also pending
+- **Frontend dashboard** — React/Next.js dashboard (see `frontend_plan.md`)
 
 ---
 

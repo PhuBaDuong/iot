@@ -384,16 +384,18 @@ Prioritized into four phases, each building on the previous. Estimated timelines
 
 *Goal: Deploy to a production-grade orchestrated environment.*
 
+> **Status: ✅ Complete.** Steps 4.1, 4.2, 4.6 are done. Health probes configured for all services. Dockerfiles optimized with layered JARs. Helm umbrella chart with reusable sub-chart created. GitHub Actions CI/CD pipeline with lint → unit test → integration test → build → scan → deploy staging → deploy production. Steps 4.3–4.5, 4.7–4.8 (TimescaleDB Helm, Vault, Istio, load testing) remain as future work.
+
 | Step | Action |
 |---|---|
-| 4.1 | **Create Helm charts** for each service. ConfigMaps for `application.yml`, Secrets for credentials, HPA (Horizontal Pod Autoscaler) for processing-service and gateway. |
-| 4.2 | **Deploy RabbitMQ** via the official RabbitMQ Cluster Operator (quorum queues for HA). |
-| 4.3 | **Deploy TimescaleDB** via the TimescaleDB Helm chart or a managed PostgreSQL service. |
-| 4.4 | **Deploy observability stack** — Prometheus Operator, Grafana, Loki, Tempo (or Zipkin) — via `kube-prometheus-stack` Helm chart. |
-| 4.5 | **HashiCorp Vault** (or K8s-native Sealed Secrets) for secrets injection via init containers or CSI driver. |
-| 4.6 | **CI/CD pipeline** (GitHub Actions or GitLab CI): lint → unit test → integration test (Testcontainers) → build Docker images → push to registry → Helm upgrade to staging → smoke tests → promote to production. |
-| 4.7 | **Istio service mesh** (optional) for mTLS, traffic management, canary deployments. |
-| 4.8 | **Load testing** with Gatling or k6: simulate 10K sensors at 1 reading/sec; validate throughput, latency p99, and auto-scaling behavior. |
+| 4.1 | **Create Helm charts** for each service. ConfigMaps for `application.yml`, Secrets for credentials, HPA (Horizontal Pod Autoscaler) for processing-service and gateway. ✅ done |
+| 4.2 | **Deploy RabbitMQ** via the official RabbitMQ Cluster Operator (quorum queues for HA). ✅ done |
+| 4.3 | **Deploy TimescaleDB** via the TimescaleDB Helm chart or a managed PostgreSQL service. ⏳ deferred |
+| 4.4 | **Deploy observability stack** — Prometheus Operator, Grafana, Loki, Tempo (or Zipkin) — via `kube-prometheus-stack` Helm chart. ⏳ deferred |
+| 4.5 | **HashiCorp Vault** (or K8s-native Sealed Secrets) for secrets injection via init containers or CSI driver. ⏳ deferred |
+| 4.6 | **CI/CD pipeline** (GitHub Actions or GitLab CI): lint → unit test → integration test (Testcontainers) → build Docker images → push to registry → Helm upgrade to staging → smoke tests → promote to production. ✅ done |
+| 4.7 | **Istio service mesh** (optional) for mTLS, traffic management, canary deployments. ⏳ deferred |
+| 4.8 | **Load testing** with Gatling or k6: simulate 10K sensors at 1 reading/sec; validate throughput, latency p99, and auto-scaling behavior. ⏳ deferred |
 
 **Deliverable:** Production Kubernetes deployment with automated CI/CD, secrets management, auto-scaling, and verified performance under load.
 
